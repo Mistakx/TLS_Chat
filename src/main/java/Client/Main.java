@@ -7,14 +7,14 @@ public class Main {
 
     public static void main(String[] args) throws IOException {
 
-        Scanner inputScanner = new Scanner(System.in);
-        System.out.println("Write your username: ");
-        String userName = inputScanner.nextLine();
-        System.out.println("Chosen username: " + userName);
-        Client client = new Client("127.0.0.1", 8000, userName);
-        client.readMessages();
-        client.sendMessages();
 
+        try {
+            Client client = new Client("127.0.0.1", 8000);
+            client.readMessages();
+            client.sendMessages();
+        } catch (IOException e) {
+            System.out.println("Error occurred while connecting to the server.");
+        }
     }
 
 }

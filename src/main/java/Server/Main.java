@@ -4,12 +4,12 @@ import java.io.IOException;
 
 public class Main {
 
-    public static void main ( String[] args ) throws IOException {
+    public static void main(String[] args) throws IOException {
 
-        Server server = new Server( 8000 );
+        ClientsAcceptor clientsAcceptor = new ClientsAcceptor(8000);
 
-        Thread serverThread = new Thread( server );
-        serverThread.start( );
+        Thread serverThread = new Thread(clientsAcceptor);
+        serverThread.start();
         System.out.println("Server started.");
 
 
