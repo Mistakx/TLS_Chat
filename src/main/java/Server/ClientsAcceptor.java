@@ -20,13 +20,12 @@ public class ClientsAcceptor implements Runnable {
 
         try {
             while (!server.isClosed()) {
-                System.out.println("Started accepting clients.");
                 Socket clientSocket = server.accept();
-                System.out.println("Client accepted.");
+                System.out.println("\nClient accepted.");
                 ClientHandler clientHandler = new ClientHandler(clientSocket);
                 Thread clientHandlerThread = new Thread(clientHandler);
                 clientHandlerThread.start();
-                System.out.println(!server.isClosed());
+                System.out.println("Started thread to handle the accepted client.\n");
             }
         } catch (IOException | ClassNotFoundException e) {
             try {

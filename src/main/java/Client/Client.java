@@ -1,20 +1,22 @@
 package Client;
 
-import Encryption.Algorithms.AES;
 import Encryption.Algorithms.EncryptionAlgorithm;
 import Encryption.Algorithms.RSA;
 import Encryption.Encryption;
-import Encryption.Handshake;
+import Message.Handshake;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.security.PublicKey;
-import java.util.ArrayList;
 import java.util.Scanner;
 
 import Encryption.AsymmetricEncryption;
+import Message.Message;
+import Message.MessageType;
+
+import static java.lang.System.exit;
 
 public class Client {
 
@@ -33,53 +35,65 @@ public class Client {
      */
     private final ObjectOutputStream outputStream;
 
-    private String userName;
-
     /**
      * The chosen encryption functions.
      */
     private Encryption encryption;
-    private String encryptionAlgorithmType;
-    private String encryptionAlgorithmName;
-    private int encryptionKeySize;
+
+    /**
+     * The client's handshake information.
+     */
+    private Handshake clientHandshake = new Handshake(null,null,null,0,null);
 
     private void optionsMenu() {
-        EncryptionAlgorithm encryptionAlgorithm = new RSA();
-        encryptionAlgorithmType = encryptionAlgorithm.getType();
-        encryptionAlgorithmName = encryptionAlgorithm.getName();
-        encryptionKeySize = encryptionAlgorithm.getKeySizes().get(0);
-        this.encryption = new AsymmetricEncryption(encryptionAlgorithmName, encryptionKeySize);
+        EncryptionAlgorithm chosenEncryptionAlgorithm = new RSA();
+        String chosenEncryptionAlgorithmType = chosenEncryptionAlgorithm.getType();
+        String chosenEncryptionAlgorithmName = chosenEncryptionAlgorithm.getName();
+        int chosenEncryptionKeySize = chosenEncryptionAlgorithm.getKeySizes().get(0);
+        clientHandshake = new Handshake(clientHandshake.username(), chosenEncryptionAlgorithmType, chosenEncryptionAlgorithmName, chosenEncryptionKeySize, clientHandshake.publicKey());
+
+        if (clientHandshake.encryptionAlgorithmType().equals("Symmetric")) {
+            // TODO: Implement symmetric encryption.
+
+        } else if (clientHandshake.encryptionAlgorithmType().equals("Asymmetric")) {
+            encryption = new AsymmetricEncryption(clientHandshake.encryptionAlgorithmName(), clientHandshake.encryptionKeySize());
+            AsymmetricEncryption asymmetricEncryption = (AsymmetricEncryption) encryption;
+            clientHandshake = new Handshake(clientHandshake.username(), clientHandshake.encryptionAlgorithmType(), clientHandshake.encryptionAlgorithmName(), clientHandshake.encryptionKeySize(), asymmetricEncryption.getPublicKey());
+        }
+
     }
 
+    /**
+     * Sends this client's username and chosen encryption information to the server.
+     *
+     * @throws IOException
+     */
     private void startServerHandshake() throws IOException {
 
-        if (encryptionAlgorithmName == null) {
+        if (clientHandshake.encryptionAlgorithmName() == null) {
             System.out.println("Encryption algorithm not chosen yet.");
             return;
-        } else if (encryptionKeySize == 0) {
+        } else if (clientHandshake.encryptionKeySize() == 0) {
             System.out.println("Encryption algorithm size not chosen yet.");
             return;
         }
 
-        Handshake handshake = null;
+        Handshake handshake;
         if (encryption instanceof AsymmetricEncryption) {
             AsymmetricEncryption asymmetricEncryption = (AsymmetricEncryption) encryption;
             PublicKey publicKey = asymmetricEncryption.getPublicKey();
-            handshake = new Handshake(userName, "Asymmetric", encryption.getAlgorithmName(), encryption.getAlgorithmKeySize(), publicKey);
+            handshake = new Handshake(clientHandshake.username(), "Asymmetric", encryption.getAlgorithmName(), encryption.getAlgorithmKeySize(), publicKey);
         } else {
-            handshake = new Handshake(userName, "Symmetric", encryption.getAlgorithmName(), encryption.getAlgorithmKeySize(), null);
+            handshake = new Handshake(clientHandshake.username(), "Symmetric", encryption.getAlgorithmName(), encryption.getAlgorithmKeySize(), null);
         }
-        try {
-            outputStream.writeObject(handshake);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        outputStream.writeObject(handshake);
     }
 
     private void changeUsername() {
         Scanner inputScanner = new Scanner(System.in);
         System.out.println("Enter new username: ");
-        userName = inputScanner.nextLine();
+        String newUsername = inputScanner.nextLine();
+        clientHandshake = new Handshake(newUsername, clientHandshake.encryptionAlgorithmType(), clientHandshake.encryptionAlgorithmName(), clientHandshake.encryptionKeySize(), clientHandshake.publicKey());
     }
 
     public Client(String host, int port) throws IOException {
@@ -90,18 +104,24 @@ public class Client {
 
         changeUsername();
         optionsMenu();
-        System.out.println("Started server handshake.");
+        System.out.println("\nStarted server handshake.");
         startServerHandshake();
-        System.out.println("Ended server handshake.");
+        System.out.println("Ended server handshake.\n");
 
     }
 
-
+    /**
+     * Continuously accept user input and send it to the server.
+     *
+     * @throws IOException
+     */
     public void sendMessages() throws IOException {
+
         while (clientSocket.isConnected()) {
             Scanner inputScanner = new Scanner(System.in);
-            System.out.println(userName + ": ");
-            String message = inputScanner.nextLine();
+            System.out.println(clientHandshake.username() + ": ");
+            String messageText = inputScanner.nextLine();
+            Message message = new Message(MessageType.Message, clientHandshake.username(), messageText);
             try {
                 outputStream.writeObject(message);
             } catch (IOException e) {
@@ -112,14 +132,23 @@ public class Client {
 
     }
 
+    /**
+     * Continuously read the messages sent to this client's socket.
+     */
     public void readMessages() {
+
         new Thread(() -> {
+
             while (clientSocket.isConnected()) {
                 try {
-                    ArrayList<Object> messageWithUserName = (ArrayList<Object>) inputStream.readObject();
-                    String userName = (String) messageWithUserName.get(0);
-                    String messageDecrypted = new String((byte[]) messageWithUserName.get(1));
-                    System.out.println(userName + ": " + messageDecrypted);
+
+                    Message message = (Message) inputStream.readObject();
+                    System.out.println(message.username() + ": " + message.message());
+                    if (message.message().equals("Server already has a client with that username.")) {
+                        closeConnection();
+                        exit(1);
+                    }
+
                 } catch (IOException | ClassNotFoundException e) {
                     try {
                         closeConnection();
@@ -129,13 +158,20 @@ public class Client {
                     break;
                 }
             }
+
         }).start();
     }
 
+    /**
+     * Closes this client's connection.
+     *
+     * @throws IOException
+     */
     private void closeConnection() throws IOException {
         clientSocket.close();
         outputStream.close();
         inputStream.close();
+        System.out.println("Connection closed.");
     }
 
 }
