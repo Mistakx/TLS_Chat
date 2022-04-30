@@ -103,11 +103,13 @@ public class ClientHandler implements Runnable {
 
         System.out.println("Started handshake with the client.");
         clientHandshake = (Handshake) clientInputStream.readObject();
-        if(clientHandshake.encryptionAlgorithmName().equals("Symmetric")){
+
+        if(clientHandshake.encryptionAlgorithmType().equals("Symmetric")){
             BigInteger privateSharedKey = agreeOnSharedPrivateKey( clientInputStream, clientOutputStream );
             clientHandshake = new Handshake(clientHandshake.username(), "Symmetric", clientHandshake.encryptionAlgorithmName(), clientHandshake.encryptionKeySize(), clientHandshake.publicKey(), privateSharedKey);
             System.out.println("chave partilhada: " + privateSharedKey);
         }
+
         System.out.println("Ended handshake with the client.");
         initializeEncryption();
         System.out.println("Set up encryption according to the handshake with the client.");

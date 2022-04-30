@@ -62,7 +62,6 @@ public class Client {
             AsymmetricEncryption asymmetricEncryption = (AsymmetricEncryption) clientEncryption;
             clientHandshake = new Handshake(clientHandshake.username(), clientHandshake.encryptionAlgorithmType(), clientHandshake.encryptionAlgorithmName(), clientHandshake.encryptionKeySize(), asymmetricEncryption.getPublicKey(), null);
         }
-
     }
 
     /**
@@ -113,7 +112,6 @@ public class Client {
         System.out.println("\nStarted server handshake.");
         startServerHandshake();
         System.out.println("Ended server handshake.\n");
-
     }
 
     /**
