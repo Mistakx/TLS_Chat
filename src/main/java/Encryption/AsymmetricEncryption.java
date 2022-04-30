@@ -75,7 +75,6 @@ public class AsymmetricEncryption extends Encryption {
     public byte[] decryptMessage(byte[] message) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException, IOException {
         Cipher cipher = Cipher.getInstance(encryptionAlgorithmName);
         cipher.init(Cipher.DECRYPT_MODE, this.privateKey);
-
         int blockSize = encryptionKeySize / 8;
         byte[][] messageChunks = divideArray(message, blockSize);
         ByteArrayOutputStream decryptedMessage = new ByteArrayOutputStream();

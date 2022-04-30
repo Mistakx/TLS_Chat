@@ -9,11 +9,17 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 import Encryption.AsymmetricEncryption;
+
+import javax.crypto.BadPaddingException;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
 
 public class ClientHandler implements Runnable {
 
@@ -33,16 +39,6 @@ public class ClientHandler implements Runnable {
     private Encryption serverEncryption;
 
 
-    private static boolean clientAlreadyExists(String clientUsername) {
-
-        for (ClientHandler currentClientHandler : clientHandlers) {
-            if (currentClientHandler.getUsername().equals(clientUsername)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     public ClientHandler(Socket clientSocket) throws IOException, ClassNotFoundException {
 
         this.clientSocket = clientSocket;
@@ -50,6 +46,98 @@ public class ClientHandler implements Runnable {
         this.clientOutputStream = new ObjectOutputStream(clientSocket.getOutputStream());
 
     }
+
+
+    /**
+     * Checks if a client with a username is already connected.
+     *
+     * @param clientUsername The client's username to check.
+     */
+    private boolean clientAlreadyExists(String clientUsername) {
+
+        for (ClientHandler currentClient : clientHandlers) {
+            if (currentClient.clientHandshake.username().equals(clientUsername)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Sends a message to all other clients.
+     *
+     * @param message The message to be sent.
+     * @throws IOException
+     */
+    public void broadcastEncryptedMessage(Message message) throws IOException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException {
+        for (ClientHandler currentClient : clientHandlers) {
+            if (!this.equals(currentClient)) {
+
+                if (currentClient.serverEncryption instanceof AsymmetricEncryption asymmetricEncryption) {
+                    byte[] encryptedMessage = asymmetricEncryption.encryptMessage(message.toBytes(), currentClient.clientHandshake.publicKey());
+                    currentClient.clientOutputStream.writeObject(encryptedMessage);
+                    currentClient.clientOutputStream.flush();
+                } else {
+                    // TODO: Implement Symmetric Encryption.
+                }
+
+            }
+        }
+    }
+
+    /**
+     * Sends a message to a specific client.
+     *
+     * @param message        The message to be sent.
+     * @param clientUsername The client to send the message to.
+     * @throws IOException
+     */
+    public void sendEncryptedMessageToClient(Message message, String clientUsername) throws IOException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException {
+        for (ClientHandler currentClient : clientHandlers) {
+            if (currentClient.clientHandshake.username().equals(clientUsername)) {
+                if (serverEncryption instanceof AsymmetricEncryption asymmetricEncryption) {
+                    byte[] encryptedMessage = asymmetricEncryption.encryptMessage(message.toBytes(), clientHandshake.publicKey());
+                    currentClient.clientOutputStream.writeObject(encryptedMessage);
+                    currentClient.clientOutputStream.flush();
+                } else {
+                    // TODO: Symmetric encryption.
+                }
+
+            }
+        }
+    }
+
+    /**
+     * Sends a message to this specific handler's client.
+     *
+     * @param message The message to be sent.
+     * @throws IOException
+     */
+    public void sendEncryptedMessageToThisClient(Message message) throws IOException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException {
+        if (serverEncryption instanceof AsymmetricEncryption asymmetricEncryption) {
+            byte[] encryptedMessage = asymmetricEncryption.encryptMessage(message.toBytes(), clientHandshake.publicKey());
+            clientOutputStream.writeObject(encryptedMessage);
+            clientOutputStream.flush();
+        } else {
+            // TODO: Implement Symmetric Encryption.
+        }
+
+    }
+
+
+    /**
+     * Removes a client from the server.
+     *
+     * @param client The client to be removed.
+     * @throws IOException
+     */
+    private void removeClient(ClientHandler client) throws IOException {
+        clientHandlers.remove(client);
+        clientSocket.close();
+        clientInputStream.close();
+        clientOutputStream.close();
+    }
+
 
     /**
      * Initializes the encryption according to the client's handshake.
@@ -70,7 +158,7 @@ public class ClientHandler implements Runnable {
      * @throws IOException
      * @throws ClassNotFoundException
      */
-    private void startServerHandshake() throws IOException, ClassNotFoundException {
+    private void startServerHandshake() throws IOException, ClassNotFoundException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException {
 
         System.out.println("Started handshake with the client.");
         clientHandshake = (Handshake) clientInputStream.readObject();
@@ -81,16 +169,17 @@ public class ClientHandler implements Runnable {
         if (clientAlreadyExists(clientHandshake.username())) {
             System.out.println("Server already has a client with that username.");
             Message errorMessage = new Message(MessageType.Error, "Server", "Server already has a client with that username.", null, null);
-            this.clientOutputStream.writeObject(errorMessage);
-            this.clientOutputStream.flush();
+            sendEncryptedMessageToThisClient(errorMessage);
             return;
         }
 
-        if (clientHandshake.publicKey() != null) {
+        if (serverEncryption instanceof AsymmetricEncryption asymmetricEncryption) {
             System.out.println("Received public key from the client.");
-            AsymmetricEncryption asymmetricEncryption = (AsymmetricEncryption) serverEncryption;
             Message message = new Message(MessageType.PublicKey, "Server", null, null, asymmetricEncryption.getPublicKey());
-            clientOutputStream.writeObject(message);
+            sendEncryptedMessageToThisClient(message);
+        }
+
+        if (clientHandshake.publicKey() != null) {
             System.out.println("Sent public key to the client.");
         } else {
             System.out.println("Didn't receive public key from the client (Client is using symmetric encryption).");
@@ -98,7 +187,35 @@ public class ClientHandler implements Runnable {
 
         clientHandlers.add(this);
 
-        System.out.println(this.getUsername() + " has joined the server.");
+        System.out.println(clientHandshake.username() + " has joined the server.");
+    }
+
+    /**
+     * Continuously listens for messages from the clients.
+     *
+     * @throws NoSuchPaddingException
+     * @throws IllegalBlockSizeException
+     * @throws IOException
+     * @throws NoSuchAlgorithmException
+     * @throws BadPaddingException
+     * @throws InvalidKeyException
+     * @throws ClassNotFoundException
+     */
+    private void listenToClientsMessages() throws NoSuchPaddingException, IllegalBlockSizeException, IOException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, ClassNotFoundException {
+        while (clientSocket.isConnected()) {
+
+            byte[] encryptedMessage = (byte[]) clientInputStream.readObject();
+            System.out.println("\n" + clientHandshake.username() + " - Encrypted message received: " + new String(encryptedMessage));
+            Message decryptedMessage = null;
+
+            if (serverEncryption instanceof AsymmetricEncryption asymmetricEncryption) {
+                decryptedMessage = Message.fromBytes(asymmetricEncryption.decryptMessage(encryptedMessage));
+                System.out.println(clientHandshake.username() + " - Decrypted message: " + new String(decryptedMessage.toBytes()));
+            } else if (clientHandshake.encryptionAlgorithmType().equals("Symmetric")) {
+                // TODO: Implement symmetric encryption.
+            }
+            broadcastEncryptedMessage(decryptedMessage);
+        }
     }
 
     @Override
@@ -112,88 +229,19 @@ public class ClientHandler implements Runnable {
             return;
         }
 
-
-        while (clientSocket.isConnected()) {
+        // Listen to the clients messages.
+        try {
+            listenToClientsMessages();
+        } catch (Exception e) {
+            System.out.println(clientHandshake.username() + " has disconnected.");
             try {
-
-                byte[] encryptedMessage = (byte[]) clientInputStream.readObject();
-                System.out.println("\n" + clientHandshake.username() + " - Encrypted message received: " + new String(encryptedMessage) );
-                Message decryptedMessage = null;
-
-                if (clientHandshake.encryptionAlgorithmType().equals("Symmetric")) {
-                    // TODO: Implement symmetric encryption.
-                } else if (clientHandshake.encryptionAlgorithmType().equals("Asymmetric")) {
-                    AsymmetricEncryption asymmetricEncryption = (AsymmetricEncryption) serverEncryption;
-                    try {
-                        decryptedMessage = Message.fromBytes(asymmetricEncryption.decryptMessage(encryptedMessage));
-                        System.out.println(clientHandshake.username() + " - Decrypted message: " + new String(decryptedMessage.toBytes()) + "\n");
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                }
-
-                broadcastMessage(decryptedMessage);
-            } catch (IOException | ClassNotFoundException e) {
-                try {
-                    removeClient(this);
-                    break;
-                } catch (IOException ex) {
-                    ex.printStackTrace();
-                }
-                e.printStackTrace();
+                removeClient(this);
+            } catch (IOException ex) {
+                throw new RuntimeException(ex);
             }
         }
+
+
     }
 
-    /**
-     * Removes a client from the server.
-     *
-     * @param client The client to be removed.
-     * @throws IOException
-     */
-    private void removeClient(ClientHandler client) throws IOException {
-        clientHandlers.remove(client);
-        clientSocket.close();
-        clientInputStream.close();
-        clientOutputStream.close();
-    }
-
-    /**
-     * Sends a message to all other clients.
-     *
-     * @param message The message to be sent.
-     * @throws IOException
-     */
-    public void broadcastMessage(Message message) throws IOException {
-        for (ClientHandler currentClient : clientHandlers) {
-            if (!this.equals(currentClient)) {
-                currentClient.clientOutputStream.writeObject(message);
-                currentClient.clientOutputStream.flush();
-            }
-        }
-    }
-
-    /**
-     * Sends a message to a specific client.
-     *
-     * @param message        The message to be sent.
-     * @param clientUsername The client to send the message to.
-     * @throws IOException
-     */
-    public void sendMessageToClient(Message message, String clientUsername) throws IOException {
-        for (ClientHandler currentClient : clientHandlers) {
-            if (currentClient.getUsername().equals(clientUsername)) {
-                currentClient.clientOutputStream.writeObject(message);
-                currentClient.clientOutputStream.flush();
-
-            }
-        }
-    }
-
-    /**
-     * @return The client's username.
-     */
-    public String getUsername() {
-        return clientHandshake.username();
-    }
 }
