@@ -100,7 +100,7 @@ public class Client {
 
     private void changeUsername() {
         Scanner inputScanner = new Scanner(System.in);
-        System.out.println("Enter new username: ");
+        System.out.print("Enter new username: ");
         String newUsername = inputScanner.nextLine();
         clientHandshake = new Handshake(newUsername, clientHandshake.encryptionAlgorithmType(), clientHandshake.encryptionAlgorithmName(), clientHandshake.encryptionKeySize(), clientHandshake.publicKey());
     }
@@ -136,6 +136,8 @@ public class Client {
             byte[] encryptedMessage = asymmetricEncryption.encryptMessage(messageBytes, serverPublicKey);
 
             try {
+                System.out.println("\nDecrypted message: " + new String(messageBytes));
+                System.out.println("Encrypted message sent: " + new String(encryptedMessage) + "\n");
                 outputStream.writeObject(encryptedMessage);
             } catch (IOException e) {
                 closeConnection();
@@ -149,6 +151,13 @@ public class Client {
      * Continuously read the messages sent to this client's socket.
      */
     public void readMessages() {
+
+        // Waits for the client to get the server's public key
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
 
         new Thread(() -> {
 
@@ -192,6 +201,7 @@ public class Client {
         outputStream.close();
         inputStream.close();
         System.out.println("Connection closed.");
+        exit(1);
     }
 
 }

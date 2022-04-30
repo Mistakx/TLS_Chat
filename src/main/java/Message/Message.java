@@ -1,9 +1,6 @@
 package Message;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.ObjectOutputStream;
-import java.io.Serializable;
+import java.io.*;
 import java.security.PublicKey;
 
 // TODO: Implement message hash
@@ -18,15 +15,22 @@ public record Message(
     public byte[] toBytes() throws IOException {
 
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        ObjectOutputStream objectOutputStream;
+        ObjectOutputStream objectOutputStream = new ObjectOutputStream(byteArrayOutputStream);
 
-        objectOutputStream = new ObjectOutputStream(byteArrayOutputStream);
         objectOutputStream.writeObject(this);
         objectOutputStream.flush();
         byte[] recordBytes = byteArrayOutputStream.toByteArray();
         byteArrayOutputStream.close();
 
         return recordBytes;
+    }
+
+    public static Message fromBytes(byte[] bytes) throws IOException, ClassNotFoundException {
+        ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(bytes);
+        ObjectInputStream objectInputStream = new ObjectInputStream(byteArrayInputStream);
+        Message message = (Message) objectInputStream.readObject();
+
+        return message;
     }
 
 }

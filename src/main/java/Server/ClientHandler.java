@@ -66,6 +66,7 @@ public class ClientHandler implements Runnable {
 
     /**
      * Starts the handshake with the client.
+     *
      * @throws IOException
      * @throws ClassNotFoundException
      */
@@ -97,7 +98,7 @@ public class ClientHandler implements Runnable {
 
         clientHandlers.add(this);
 
-        System.out.println(this.getUsername() + " has joined the server.\n");
+        System.out.println(this.getUsername() + " has joined the server.");
     }
 
     @Override
@@ -116,20 +117,22 @@ public class ClientHandler implements Runnable {
             try {
 
                 byte[] encryptedMessage = (byte[]) clientInputStream.readObject();
-                Message test = null;
+                System.out.println("\n" + clientHandshake.username() + " - Encrypted message received: " + new String(encryptedMessage) );
+                Message decryptedMessage = null;
 
                 if (clientHandshake.encryptionAlgorithmType().equals("Symmetric")) {
                     // TODO: Implement symmetric encryption.
                 } else if (clientHandshake.encryptionAlgorithmType().equals("Asymmetric")) {
                     AsymmetricEncryption asymmetricEncryption = (AsymmetricEncryption) serverEncryption;
                     try {
-                        byte[] decryptedMessage = asymmetricEncryption.decryptMessage(encryptedMessage);
+                        decryptedMessage = Message.fromBytes(asymmetricEncryption.decryptMessage(encryptedMessage));
+                        System.out.println(clientHandshake.username() + " - Decrypted message: " + new String(decryptedMessage.toBytes()) + "\n");
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
                 }
 
-                broadcastMessage(test);
+                broadcastMessage(decryptedMessage);
             } catch (IOException | ClassNotFoundException e) {
                 try {
                     removeClient(this);
