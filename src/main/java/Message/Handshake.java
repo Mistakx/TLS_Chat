@@ -1,6 +1,7 @@
 package Message;
 
 import java.io.Serializable;
+import java.math.BigInteger;
 import java.security.PublicKey;
 
 public record Handshake(
@@ -8,6 +9,7 @@ public record Handshake(
         String encryptionAlgorithmType,
         String encryptionAlgorithmName,
         int encryptionKeySize,
-        PublicKey publicKey
+        PublicKey publicKey,
+        BigInteger privateSharedKey
 ) implements Serializable {
 }

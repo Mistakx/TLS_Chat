@@ -89,5 +89,4 @@ public class AsymmetricEncryption extends Encryption {
         return publicKey;
     }
 
-
 }
