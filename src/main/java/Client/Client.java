@@ -51,6 +51,9 @@ public class Client {
 
     private BigInteger privateSharedKey;
 
+    /**
+     * The settings menu to change the client's settings.
+     */
     private void optionsMenu() {
 
         if (clientHandshake.encryptionAlgorithmType().equals("Symmetric")) {
@@ -89,15 +92,7 @@ public class Client {
             handshake = new Handshake(clientHandshake.username(), "Symmetric", clientEncryption.getAlgorithmName(), clientEncryption.getAlgorithmKeySize(), null, privateSharedKey);
             outputStream.writeObject(handshake);
             this.privateSharedKey = agreeOnSharedPrivateKey( );
-            System.out.println("chave partilhada: " + privateSharedKey);
         }
-    }
-
-    private void changeUsername() {
-        Scanner inputScanner = new Scanner(System.in);
-        System.out.println("Enter new username: ");
-        String newUsername = inputScanner.nextLine();
-        clientHandshake = new Handshake(newUsername, clientHandshake.encryptionAlgorithmType(), clientHandshake.encryptionAlgorithmName(), clientHandshake.encryptionKeySize(), clientHandshake.publicKey(), clientHandshake.privateSharedKey());
     }
 
     public Client(String host, int port, String username,String encryptionType,  String encryptionAlgorithm, int encryptionKeySize, String hashAlgorithm ) throws Exception {
@@ -107,7 +102,6 @@ public class Client {
         inputStream = new ObjectInputStream(clientSocket.getInputStream());
 
         clientHandshake = new Handshake(username, encryptionType, encryptionAlgorithm, encryptionKeySize, null, null);
-        //changeUsername();
         optionsMenu();
         System.out.println("\nStarted server handshake.");
         startServerHandshake();
@@ -121,27 +115,34 @@ public class Client {
      */
     public void sendMessages() throws Exception {
 
+        // Waits for the client to get the server's public key
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+
         while (clientSocket.isConnected()) {
             Scanner inputScanner = new Scanner(System.in);
-            System.out.println(clientHandshake.username() + ": ");
+            System.out.print(clientHandshake.username() + ": ");
             String messageText = inputScanner.nextLine();
             Message message = new Message(MessageType.Message, clientHandshake.username(), messageText, null, null);
-            if( clientHandshake.encryptionAlgorithmType()== "Asymmetric" ) {
-                AsymmetricEncryption asymmetricEncryption = (AsymmetricEncryption) clientEncryption;
-                byte[] messageBytes = message.toBytes();
+            byte[] messageBytes = message.toBytes();
+            if (clientEncryption instanceof AsymmetricEncryption asymmetricEncryption) {
                 byte[] encryptedMessage = asymmetricEncryption.encryptMessage(messageBytes, asymmetricEncryption.getPublicKey());
-
                 try {
+                    System.out.println("\nDecrypted message: " + new String(messageBytes));
+                    System.out.println("Encrypted message sent: " + new String(encryptedMessage) + "\n");
                     outputStream.writeObject(encryptedMessage);
                 } catch (IOException e) {
                     closeConnection();
                     break;
                 }
-            }else if( clientHandshake.encryptionAlgorithmType()== "Symmetric" ){
-                SymmetricEncryption symmetricEncryption = (SymmetricEncryption) clientEncryption;
-                byte[] messageBytes = message.toBytes();
+            }else if( clientEncryption instanceof SymmetricEncryption symmetricEncryption ){
                 byte[] encryptedMessage = symmetricEncryption.do_SymEncryption(messageBytes, this.privateSharedKey.toByteArray());
                 try {
+                    System.out.println("\nDecrypted message: " + new String(messageBytes));
+                    System.out.println("Encrypted message sent: " + new String(encryptedMessage) + "\n");
                     outputStream.writeObject(encryptedMessage);
                 } catch (IOException e) {
                     closeConnection();
@@ -188,21 +189,36 @@ public class Client {
             while (clientSocket.isConnected()) {
                 try {
 
-                    Message message = (Message) inputStream.readObject();
+                    byte[] encryptedMessage = (byte[]) inputStream.readObject();
+                    System.out.println("\nReceived encrypted message: ");
+                    System.out.println(new String(encryptedMessage));
+                    Message decryptedMessage = null;
 
-                    if (message.messageType().equals(MessageType.PublicKey)) {
-                        serverPublicKey = (PublicKey) message.publicKey();
+                    if (clientEncryption instanceof AsymmetricEncryption asymmetricEncryption) {
+                        decryptedMessage = Message.fromBytes(asymmetricEncryption.decryptMessage(encryptedMessage));
+                        System.out.println("Decrypted message: ");
+                        System.out.println(new String(decryptedMessage.toBytes()));
+                    } else if(clientEncryption instanceof SymmetricEncryption symmetricEncryption){
+                        decryptedMessage = Message.fromBytes(symmetricEncryption.do_SymDecryption(encryptedMessage, this.privateSharedKey.toByteArray()));
+                        System.out.println("Decrypted message: ");
+                        System.out.println(new String(decryptedMessage.toBytes()));
+                    }
+
+
+                    if (decryptedMessage.messageType().equals(MessageType.PublicKey)) {
+                        serverPublicKey = decryptedMessage.publicKey();
                         System.out.println("Received public key from the server.");
-                    } else if (message.messageType().equals(MessageType.Error)) {
+                    } else if (decryptedMessage.messageType().equals(MessageType.Error)) {
                         System.out.println("Server already has a client with that username.");
                         closeConnection();
                         exit(1);
                     } else {
-                        System.out.print(message.username() + ": " + message.message());
+                        System.out.print(decryptedMessage.username() + ": " + decryptedMessage.message());
                     }
 
 
-                } catch (IOException | ClassNotFoundException e) {
+                } catch (Exception e) {
+                    e.printStackTrace();
                     try {
                         closeConnection();
                     } catch (IOException ex) {
@@ -225,6 +241,7 @@ public class Client {
         outputStream.close();
         inputStream.close();
         System.out.println("Connection closed.");
+        exit(1);
     }
 
 }

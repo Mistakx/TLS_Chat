@@ -54,9 +54,7 @@ public class SymmetricEncryption extends Encryption{
         Cipher cipher = Cipher.getInstance( encryptionAlgorithmName );
         cipher.init( Cipher.ENCRYPT_MODE, secretKey);
 
-        cipher.getBlockSize();
-
-        int blockSize = encryptionKeySize / 8 - 11;
+        int blockSize = cipher.getBlockSize();
         byte[][] messageChunks = divideArray(message, blockSize);
         ByteArrayOutputStream encryptedMessage = new ByteArrayOutputStream();
         for (byte[] currentChunk : messageChunks) {
@@ -79,7 +77,7 @@ public class SymmetricEncryption extends Encryption{
         Cipher cipher = Cipher.getInstance( encryptionAlgorithmName );
         cipher.init(Cipher.DECRYPT_MODE, secretKey);
 
-        int blockSize = encryptionKeySize / 8;
+        int blockSize = cipher.getBlockSize();
         byte[][] messageChunks = divideArray(message, blockSize);
         ByteArrayOutputStream decryptedMessage = new ByteArrayOutputStream();
         for (byte[] currentChunk : messageChunks) {
