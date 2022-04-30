@@ -16,7 +16,7 @@ public class RSA extends EncryptionAlgorithm {
 
     @Override
     public List<Integer> getKeySizes() {
-        List<Integer> keySizes = List.of(512, 1024, 2048, 4096);
+        List<Integer> keySizes = List.of(512, 1024, 2048);
         return keySizes;
     }
 

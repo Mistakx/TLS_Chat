@@ -11,7 +11,11 @@ public class Main {
         try {
             Client client = new Client("127.0.0.1", 8000);
             client.readMessages();
-            client.sendMessages();
+            try {
+                client.sendMessages();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         } catch (IOException e) {
             System.out.println("Error occurred while connecting to the server.");
         }
