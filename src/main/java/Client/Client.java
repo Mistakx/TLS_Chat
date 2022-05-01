@@ -10,8 +10,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.math.BigInteger;
 import java.net.Socket;
-import java.security.NoSuchAlgorithmException;
-import java.security.PublicKey;
+import java.security.*;
 import java.util.Scanner;
 
 import Encryption.SymmetricEncryption;
@@ -44,9 +43,9 @@ public class Client {
     /**
      * The client's handshake information.
      */
-    private Handshake clientHandshake = new Handshake(null, null, null, null, null, null);
+    private Handshake clientHandshake = new Handshake(null, null, null, null, null);
     private PublicKey serverAsymmetricPublicKey;
-    private BigInteger clientDiffieHellmanPrivateSharedKey;
+    private byte[] clientDiffieHellmanPrivateSharedKey;
 
     /**
      * The settings menu to change the client's settings.
@@ -56,15 +55,15 @@ public class Client {
         String chosenEncryptionAlgorithmType = chosenEncryptionAlgorithm.getType();
         String chosenEncryptionAlgorithmName = chosenEncryptionAlgorithm.getName();
         int chosenEncryptionKeySize = chosenEncryptionAlgorithm.getKeySizes().get(2);
-        clientHandshake = new Handshake(clientHandshake.username(), chosenEncryptionAlgorithmType, chosenEncryptionAlgorithmName, chosenEncryptionKeySize, clientHandshake.asymmetricPublicKey(), null);
+        clientHandshake = new Handshake(clientHandshake.username(), chosenEncryptionAlgorithmType, chosenEncryptionAlgorithmName, chosenEncryptionKeySize, clientHandshake.publicKey());
 
         if (clientHandshake.encryptionAlgorithmType().equals("Symmetric")) {
             clientEncryption = new SymmetricEncryption(clientHandshake.encryptionAlgorithmName(), clientHandshake.encryptionKeySize());
-            clientHandshake = new Handshake(clientHandshake.username(), clientHandshake.encryptionAlgorithmType(), clientHandshake.encryptionAlgorithmName(), clientHandshake.encryptionKeySize(), null, clientHandshake.diffieHellmanPublicKey());
+            clientHandshake = new Handshake(clientHandshake.username(), clientHandshake.encryptionAlgorithmType(), clientHandshake.encryptionAlgorithmName(), clientHandshake.encryptionKeySize(), clientHandshake.publicKey());
         } else if (clientHandshake.encryptionAlgorithmType().equals("Asymmetric")) {
             clientEncryption = new AsymmetricEncryption(clientHandshake.encryptionAlgorithmName(), clientHandshake.encryptionKeySize());
             AsymmetricEncryption asymmetricEncryption = (AsymmetricEncryption) clientEncryption;
-            clientHandshake = new Handshake(clientHandshake.username(), clientHandshake.encryptionAlgorithmType(), clientHandshake.encryptionAlgorithmName(), clientHandshake.encryptionKeySize(), asymmetricEncryption.getPublicKey(), null);
+            clientHandshake = new Handshake(clientHandshake.username(), clientHandshake.encryptionAlgorithmType(), clientHandshake.encryptionAlgorithmName(), clientHandshake.encryptionKeySize(), asymmetricEncryption.getPublicKey());
         }
 
     }
@@ -74,7 +73,7 @@ public class Client {
      *
      * @throws IOException
      */
-    private void startServerHandshake() throws IOException, NoSuchAlgorithmException, ClassNotFoundException {
+    private void startServerHandshake() throws IOException, NoSuchAlgorithmException, ClassNotFoundException, InvalidKeyException {
 
         if (clientHandshake.encryptionAlgorithmName() == null) {
             System.out.println("Encryption algorithm not chosen yet.");
@@ -88,18 +87,19 @@ public class Client {
         if (clientEncryption instanceof AsymmetricEncryption asymmetricEncryption) {
             System.out.println("Started asymmetric encryption handshake.");
             PublicKey publicKey = asymmetricEncryption.getPublicKey();
-            handshake = new Handshake(clientHandshake.username(), "Asymmetric", clientEncryption.getAlgorithmName(), clientEncryption.getAlgorithmKeySize(), publicKey, null);
+            handshake = new Handshake(clientHandshake.username(), "Asymmetric", clientEncryption.getAlgorithmName(), clientEncryption.getAlgorithmKeySize(), publicKey);
             outputStream.writeObject(handshake);
             // The server's public key is sent to the client already encrypted.
         } else if (clientEncryption instanceof SymmetricEncryption) {
             System.out.println("Started symmetric encryption handshake.");
-            BigInteger privateKey = DiffieHellman.generatePrivateKey(clientHandshake.encryptionKeySize());
-            BigInteger publicKey = DiffieHellman.generatePublicKey(privateKey);
-            handshake = new Handshake(clientHandshake.username(), "Symmetric", clientEncryption.getAlgorithmName(), clientEncryption.getAlgorithmKeySize(), null, publicKey);
+            DiffieHellman diffieHellman = new DiffieHellman();
+            PrivateKey privateKey = diffieHellman.generatePrivateKey(clientHandshake.encryptionKeySize());
+            PublicKey publicKey = diffieHellman.generatePublicKey();
+            handshake = new Handshake(clientHandshake.username(), "Symmetric", clientEncryption.getAlgorithmName(), clientEncryption.getAlgorithmKeySize(), publicKey);
             outputStream.writeObject(handshake);
             outputStream.flush();
-            BigInteger clientPublicKey = (BigInteger) inputStream.readObject();
-            clientDiffieHellmanPrivateSharedKey = DiffieHellman.computePrivateKey(clientPublicKey, privateKey);
+            PublicKey clientPublicKey = (PublicKey) inputStream.readObject();
+            clientDiffieHellmanPrivateSharedKey = diffieHellman.computePrivateKey(clientPublicKey);
             System.out.println("Server and client agreed on private key: " + clientDiffieHellmanPrivateSharedKey);
         }
 
@@ -109,10 +109,10 @@ public class Client {
         Scanner inputScanner = new Scanner(System.in);
         System.out.print("Enter new username: ");
         String newUsername = inputScanner.nextLine();
-        clientHandshake = new Handshake(newUsername, clientHandshake.encryptionAlgorithmType(), clientHandshake.encryptionAlgorithmName(), clientHandshake.encryptionKeySize(), clientHandshake.asymmetricPublicKey(), null);
+        clientHandshake = new Handshake(newUsername, clientHandshake.encryptionAlgorithmType(), clientHandshake.encryptionAlgorithmName(), clientHandshake.encryptionKeySize(), clientHandshake.publicKey());
     }
 
-    public Client(String host, int port) throws IOException, NoSuchAlgorithmException, ClassNotFoundException {
+    public Client(String host, int port) throws IOException, NoSuchAlgorithmException, ClassNotFoundException, InvalidKeyException {
 
         clientSocket = new Socket(host, port);
         outputStream = new ObjectOutputStream(clientSocket.getOutputStream());
@@ -150,7 +150,9 @@ public class Client {
             if (clientEncryption instanceof AsymmetricEncryption asymmetricEncryption) {
                 encryptedMessage = asymmetricEncryption.encryptMessage(messageBytes, serverAsymmetricPublicKey);
             } else if (clientEncryption instanceof SymmetricEncryption symmetricEncryption) {
-                encryptedMessage = symmetricEncryption.do_SymEncryption(messageBytes, this.clientDiffieHellmanPrivateSharedKey.toByteArray());
+                encryptedMessage = symmetricEncryption.do_SymEncryption(messageBytes, clientDiffieHellmanPrivateSharedKey);
+                byte[] decryptedMessage = symmetricEncryption.do_SymDecryption(encryptedMessage, clientDiffieHellmanPrivateSharedKey);
+                System.out.println("\nDecrypted message: " + new String(decryptedMessage));
             }
             System.out.println("\nDecrypted message: ");
             System.out.println(new String(messageBytes));
@@ -184,7 +186,7 @@ public class Client {
                         System.out.println("Decrypted message: ");
                         System.out.println(new String(decryptedMessage.toBytes()));
                     } else if (clientEncryption instanceof SymmetricEncryption symmetricEncryption) {
-                        decryptedMessage = Message.fromBytes(symmetricEncryption.do_SymDecryption(encryptedMessage, this.clientDiffieHellmanPrivateSharedKey.toByteArray()));
+                        decryptedMessage = Message.fromBytes(symmetricEncryption.do_SymDecryption(encryptedMessage, this.clientDiffieHellmanPrivateSharedKey));
                         System.out.println("Decrypted message: ");
                         System.out.println(new String(decryptedMessage.toBytes()));
                     }
