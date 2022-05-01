@@ -6,6 +6,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.math.BigInteger;
 import java.security.*;
+import java.util.Arrays;
 import java.util.Random;
 
 public class DiffieHellman {
@@ -21,12 +22,12 @@ public class DiffieHellman {
     }
 
 
-    public PrivateKey generatePrivateKey(int NUM_BITS) throws NoSuchAlgorithmException {
+    public PrivateKey generatePrivateKey() throws NoSuchAlgorithmException {
 //        Random randomGenerator = SecureRandom.getInstance( "SHA1PRNG" );
 //        return new BigInteger( NUM_BITS , randomGenerator );
 
         keyPairGenerator = KeyPairGenerator.getInstance("EC");
-        keyPairGenerator.initialize(NUM_BITS);
+        keyPairGenerator.initialize(256);
         keyPair = keyPairGenerator.generateKeyPair();
         return keyPair.getPrivate();
 
@@ -38,14 +39,15 @@ public class DiffieHellman {
         return publickey;
     }
 
-    public byte[] computePrivateKey(PublicKey publicKey) throws NoSuchAlgorithmException, InvalidKeyException {
+    public byte[] computePrivateKey(PublicKey publicKey, int NUM_BITS) throws NoSuchAlgorithmException, InvalidKeyException {
 //        return publicKey.modPow(privateKey, N);
 
         KeyAgreement keyAgreement = KeyAgreement.getInstance("ECDH");
         keyAgreement.init(keyPair.getPrivate());
         keyAgreement.doPhase(publicKey, true);
         byte[] sharedsecret = keyAgreement.generateSecret();
-        return sharedsecret;
+        byte[] sharedSecretWithCorrectSize = Arrays.copyOfRange(sharedsecret,0, NUM_BITS/8);
+        return sharedSecretWithCorrectSize;
     }
 
 

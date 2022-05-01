@@ -85,7 +85,7 @@ public class SymmetricEncryption extends Encryption {
         Cipher cipher = Cipher.getInstance(encryptionAlgorithmName);
         cipher.init(Cipher.DECRYPT_MODE, secretKey);
 
-        int blockSize = cipher.getBlockSize() * 8; // Block size is in bytes, so *8 to get bits
+        int blockSize = cipher.getBlockSize(); // Block size is in bytes, so *8 to get bits
         byte[][] messageChunks = divideArray(message, blockSize);
         ByteArrayOutputStream decryptedMessage = new ByteArrayOutputStream();
         try {

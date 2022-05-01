@@ -123,7 +123,7 @@ public class ClientHandler implements Runnable {
                     currentClient.clientOutputStream.writeObject(encryptedMessage);
                     currentClient.clientOutputStream.flush();
                 } else if ((currentClient.serverEncryption instanceof SymmetricEncryption symmetricEncryption)) {
-                    byte[] encryptedMessage = symmetricEncryption.do_SymEncryption(message.toBytes(),serverDiffieHellmanPrivateSharedKey );
+                    byte[] encryptedMessage = symmetricEncryption.do_SymEncryption(message.toBytes(), serverDiffieHellmanPrivateSharedKey);
                     currentClient.clientOutputStream.writeObject(encryptedMessage);
                     currentClient.clientOutputStream.flush();
                 }
@@ -144,7 +144,7 @@ public class ClientHandler implements Runnable {
             clientOutputStream.writeObject(encryptedMessage);
             clientOutputStream.flush();
         } else if ((serverEncryption instanceof SymmetricEncryption symmetricEncryption)) {
-            byte[] encryptedMessage = symmetricEncryption.do_SymEncryption(message.toBytes(),serverDiffieHellmanPrivateSharedKey );
+            byte[] encryptedMessage = symmetricEncryption.do_SymEncryption(message.toBytes(), serverDiffieHellmanPrivateSharedKey);
             clientOutputStream.writeObject(encryptedMessage);
             clientOutputStream.flush();
         }
@@ -176,9 +176,9 @@ public class ClientHandler implements Runnable {
      */
     private void agreeOnSharedPrivateKey(ObjectOutputStream clientOutputStream) throws IOException, NoSuchAlgorithmException, InvalidKeyException {
         DiffieHellman diffieHellman = new DiffieHellman();
-        PrivateKey privateKey = diffieHellman.generatePrivateKey(clientHandshake.encryptionKeySize());
+        PrivateKey privateKey = diffieHellman.generatePrivateKey();
         PublicKey publicKey = diffieHellman.generatePublicKey();
-        serverDiffieHellmanPrivateSharedKey = diffieHellman.computePrivateKey(clientHandshake.publicKey());
+        serverDiffieHellmanPrivateSharedKey = diffieHellman.computePrivateKey(clientHandshake.publicKey(), clientHandshake.encryptionKeySize());
         clientOutputStream.writeObject(publicKey);
         clientOutputStream.flush();
     }
@@ -214,7 +214,8 @@ public class ClientHandler implements Runnable {
         } else if (serverEncryption instanceof SymmetricEncryption symmetricEncryption) {
             System.out.println("Received Diffie-Hellman public key from the client. Sending server's diffie hellman public key to the client.");
             agreeOnSharedPrivateKey(clientOutputStream);
-            System.out.println("Agreed on private key : " + serverDiffieHellmanPrivateSharedKey);
+            System.out.println("Agreed on private key : ");
+            System.out.println(new String(serverDiffieHellmanPrivateSharedKey));
         }
 
         clientHandlers.add(this);

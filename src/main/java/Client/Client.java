@@ -54,7 +54,7 @@ public class Client {
         EncryptionAlgorithm chosenEncryptionAlgorithm = new AES();
         String chosenEncryptionAlgorithmType = chosenEncryptionAlgorithm.getType();
         String chosenEncryptionAlgorithmName = chosenEncryptionAlgorithm.getName();
-        int chosenEncryptionKeySize = chosenEncryptionAlgorithm.getKeySizes().get(2);
+        int chosenEncryptionKeySize = chosenEncryptionAlgorithm.getKeySizes().get(0);
         clientHandshake = new Handshake(clientHandshake.username(), chosenEncryptionAlgorithmType, chosenEncryptionAlgorithmName, chosenEncryptionKeySize, clientHandshake.publicKey());
 
         if (clientHandshake.encryptionAlgorithmType().equals("Symmetric")) {
@@ -93,14 +93,15 @@ public class Client {
         } else if (clientEncryption instanceof SymmetricEncryption) {
             System.out.println("Started symmetric encryption handshake.");
             DiffieHellman diffieHellman = new DiffieHellman();
-            PrivateKey privateKey = diffieHellman.generatePrivateKey(clientHandshake.encryptionKeySize());
+            PrivateKey privateKey = diffieHellman.generatePrivateKey();
             PublicKey publicKey = diffieHellman.generatePublicKey();
             handshake = new Handshake(clientHandshake.username(), "Symmetric", clientEncryption.getAlgorithmName(), clientEncryption.getAlgorithmKeySize(), publicKey);
             outputStream.writeObject(handshake);
             outputStream.flush();
             PublicKey clientPublicKey = (PublicKey) inputStream.readObject();
-            clientDiffieHellmanPrivateSharedKey = diffieHellman.computePrivateKey(clientPublicKey);
-            System.out.println("Server and client agreed on private key: " + clientDiffieHellmanPrivateSharedKey);
+            clientDiffieHellmanPrivateSharedKey = diffieHellman.computePrivateKey(clientPublicKey, clientHandshake.encryptionKeySize());
+            System.out.println("Server and client agreed on private key: ");
+            System.out.println(new String(clientDiffieHellmanPrivateSharedKey));
         }
 
     }
@@ -152,7 +153,8 @@ public class Client {
             } else if (clientEncryption instanceof SymmetricEncryption symmetricEncryption) {
                 encryptedMessage = symmetricEncryption.do_SymEncryption(messageBytes, clientDiffieHellmanPrivateSharedKey);
                 byte[] decryptedMessage = symmetricEncryption.do_SymDecryption(encryptedMessage, clientDiffieHellmanPrivateSharedKey);
-                System.out.println("\nDecrypted message: " + new String(decryptedMessage));
+                System.out.println("\nDecrypted message: ");
+                System.out.println(new String(decryptedMessage));
             }
             System.out.println("\nDecrypted message: ");
             System.out.println(new String(messageBytes));
