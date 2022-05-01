@@ -8,6 +8,7 @@ import Message.MessageType;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.math.BigInteger;
 import java.net.Socket;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
@@ -16,6 +17,8 @@ import java.util.Collections;
 import java.util.List;
 
 import Encryption.AsymmetricEncryption;
+import Encryption.SymmetricEncryption;
+import Encryption.DiffieHellman;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
@@ -64,68 +67,6 @@ public class ClientHandler implements Runnable {
     }
 
     /**
-     * Sends a message to all other clients.
-     *
-     * @param message The message to be sent.
-     * @throws IOException
-     */
-    public void broadcastEncryptedMessage(Message message) throws IOException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException {
-        for (ClientHandler currentClient : clientHandlers) {
-            if (!this.equals(currentClient)) {
-
-                if (currentClient.serverEncryption instanceof AsymmetricEncryption asymmetricEncryption) {
-                    byte[] encryptedMessage = asymmetricEncryption.encryptMessage(message.toBytes(), currentClient.clientHandshake.publicKey());
-                    currentClient.clientOutputStream.writeObject(encryptedMessage);
-                    currentClient.clientOutputStream.flush();
-                } else {
-                    // TODO: Implement Symmetric Encryption.
-                }
-
-            }
-        }
-    }
-
-    /**
-     * Sends a message to a specific client.
-     *
-     * @param message        The message to be sent.
-     * @param clientUsername The client to send the message to.
-     * @throws IOException
-     */
-    public void sendEncryptedMessageToClient(Message message, String clientUsername) throws IOException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException {
-        for (ClientHandler currentClient : clientHandlers) {
-            if (currentClient.clientHandshake.username().equals(clientUsername)) {
-                if (serverEncryption instanceof AsymmetricEncryption asymmetricEncryption) {
-                    byte[] encryptedMessage = asymmetricEncryption.encryptMessage(message.toBytes(), clientHandshake.publicKey());
-                    currentClient.clientOutputStream.writeObject(encryptedMessage);
-                    currentClient.clientOutputStream.flush();
-                } else {
-                    // TODO: Symmetric encryption.
-                }
-
-            }
-        }
-    }
-
-    /**
-     * Sends a message to this specific handler's client.
-     *
-     * @param message The message to be sent.
-     * @throws IOException
-     */
-    public void sendEncryptedMessageToThisClient(Message message) throws IOException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException {
-        if (serverEncryption instanceof AsymmetricEncryption asymmetricEncryption) {
-            byte[] encryptedMessage = asymmetricEncryption.encryptMessage(message.toBytes(), clientHandshake.publicKey());
-            clientOutputStream.writeObject(encryptedMessage);
-            clientOutputStream.flush();
-        } else {
-            // TODO: Implement Symmetric Encryption.
-        }
-
-    }
-
-
-    /**
      * Removes a client from the server.
      *
      * @param client The client to be removed.
@@ -140,16 +81,103 @@ public class ClientHandler implements Runnable {
 
 
     /**
+     * Sends a message to all other clients.
+     *
+     * @param message The message to be sent.
+     * @throws IOException
+     */
+    public void broadcastEncryptedMessage(Message message) throws Exception {
+        for (ClientHandler currentClient : clientHandlers) {
+            if (!this.equals(currentClient)) {
+
+                if (currentClient.serverEncryption instanceof AsymmetricEncryption asymmetricEncryption) {
+                    byte[] encryptedMessage = asymmetricEncryption.encryptMessage(message.toBytes(), currentClient.clientHandshake.asymmetricPublicKey());
+                    currentClient.clientOutputStream.writeObject(encryptedMessage);
+                    currentClient.clientOutputStream.flush();
+                } else if ((currentClient.serverEncryption instanceof SymmetricEncryption symmetricEncryption)) {
+                    byte[] encryptedMessage = symmetricEncryption.do_SymEncryption(message.toBytes(), currentClient.clientHandshake.diffieHellmanPublicKey().toByteArray());
+                    currentClient.clientOutputStream.writeObject(encryptedMessage);
+                    currentClient.clientOutputStream.flush();
+                }
+
+            }
+        }
+    }
+
+    /**
+     * Sends a message to a specific client.
+     *
+     * @param message        The message to be sent.
+     * @param clientUsername The client to send the message to.
+     * @throws IOException
+     */
+    public void sendEncryptedMessageToClient(Message message, String clientUsername) throws Exception {
+        for (ClientHandler currentClient : clientHandlers) {
+            if (currentClient.clientHandshake.username().equals(clientUsername)) {
+                if (serverEncryption instanceof AsymmetricEncryption asymmetricEncryption) {
+                    byte[] encryptedMessage = asymmetricEncryption.encryptMessage(message.toBytes(), clientHandshake.asymmetricPublicKey());
+                    currentClient.clientOutputStream.writeObject(encryptedMessage);
+                    currentClient.clientOutputStream.flush();
+                } else if ((currentClient.serverEncryption instanceof SymmetricEncryption symmetricEncryption)) {
+                    byte[] encryptedMessage = symmetricEncryption.do_SymEncryption(message.toBytes(), currentClient.clientHandshake.diffieHellmanPublicKey().toByteArray());
+                    currentClient.clientOutputStream.writeObject(encryptedMessage);
+                    currentClient.clientOutputStream.flush();
+                }
+
+            }
+        }
+    }
+
+    /**
+     * Sends a message to this specific handler's client.
+     *
+     * @param message The message to be sent.
+     * @throws IOException
+     */
+    public void sendEncryptedMessageToThisClient(Message message) throws Exception {
+        if (serverEncryption instanceof AsymmetricEncryption asymmetricEncryption) {
+            byte[] encryptedMessage = asymmetricEncryption.encryptMessage(message.toBytes(), clientHandshake.asymmetricPublicKey());
+            clientOutputStream.writeObject(encryptedMessage);
+            clientOutputStream.flush();
+        } else if ((serverEncryption instanceof SymmetricEncryption symmetricEncryption)) {
+            byte[] encryptedMessage = symmetricEncryption.do_SymEncryption(message.toBytes(), clientHandshake.diffieHellmanPublicKey().toByteArray());
+            clientOutputStream.writeObject(encryptedMessage);
+            clientOutputStream.flush();
+        }
+
+    }
+
+
+    /**
      * Initializes the encryption according to the client's handshake.
      */
     private void initializeEncryption() {
 
         if (clientHandshake.encryptionAlgorithmType().equals("Symmetric")) {
-            // TODO: Implement symmetric encryption.
+            serverEncryption = new SymmetricEncryption(clientHandshake.encryptionAlgorithmName(), clientHandshake.encryptionKeySize());
         } else if (clientHandshake.encryptionAlgorithmType().equals("Asymmetric")) {
             serverEncryption = new AsymmetricEncryption(clientHandshake.encryptionAlgorithmName(), clientHandshake.encryptionKeySize());
         }
 
+    }
+
+    /**
+     * This function creates a private key shared between the server and the client
+     *
+     * @param clientInputStream  what comes from the client
+     * @param clientOutputStream what is sent to the client
+     * @return the shared private key
+     * @throws IOException
+     * @throws ClassNotFoundException
+     * @throws NoSuchAlgorithmException
+     */
+    private BigInteger agreeOnSharedPrivateKey(ObjectOutputStream clientOutputStream) throws IOException, NoSuchAlgorithmException {
+        BigInteger privateKey = DiffieHellman.generatePrivateKey(clientHandshake.encryptionKeySize());
+        BigInteger publicKey = DiffieHellman.generatePublicKey(privateKey);
+        BigInteger sharedPrivateKey = DiffieHellman.computePrivateKey(clientHandshake.diffieHellmanPublicKey(), privateKey);
+        clientOutputStream.writeObject(publicKey);
+        clientOutputStream.flush();
+        return sharedPrivateKey;
     }
 
     /**
@@ -158,13 +186,16 @@ public class ClientHandler implements Runnable {
      * @throws IOException
      * @throws ClassNotFoundException
      */
-    private void startServerHandshake() throws IOException, ClassNotFoundException, NoSuchPaddingException, IllegalBlockSizeException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException {
+    private void startServerHandshake() throws Exception {
 
         System.out.println("Started handshake with the client.");
         clientHandshake = (Handshake) clientInputStream.readObject();
         System.out.println("Ended handshake with the client.");
         initializeEncryption();
         System.out.println("Set up encryption according to the handshake with the client.");
+        System.out.println("Client encryption algorithm: " + clientHandshake.encryptionAlgorithmName());
+        System.out.println("Client encryption key size: " + clientHandshake.encryptionKeySize());
+
 
         if (clientAlreadyExists(clientHandshake.username())) {
             System.out.println("Server already has a client with that username.");
@@ -174,21 +205,21 @@ public class ClientHandler implements Runnable {
         }
 
         if (serverEncryption instanceof AsymmetricEncryption asymmetricEncryption) {
-            System.out.println("Received public key from the client.");
-            Message message = new Message(MessageType.PublicKey, "Server", null, null, asymmetricEncryption.getPublicKey());
+            System.out.println("Received public key from the client. Sending server's public key to the client.");
+            Message message = new Message(MessageType.AsymmetricPublicKey, "Server", null, null, asymmetricEncryption.getPublicKey());
             sendEncryptedMessageToThisClient(message);
-        }
-
-        if (clientHandshake.publicKey() != null) {
-            System.out.println("Sent public key to the client.");
-        } else {
-            System.out.println("Didn't receive public key from the client (Client is using symmetric encryption).");
+        } else if (serverEncryption instanceof SymmetricEncryption symmetricEncryption) {
+            System.out.println("Received Diffie-Hellman public key from the client. Sending server's diffie hellman public key to the client.");
+            BigInteger privateSharedKey = agreeOnSharedPrivateKey(clientOutputStream);
+            clientHandshake = new Handshake(clientHandshake.username(), "Symmetric", clientHandshake.encryptionAlgorithmName(), clientHandshake.encryptionKeySize(), clientHandshake.asymmetricPublicKey(), privateSharedKey);
+            System.out.println("Agreed on private key : " + privateSharedKey);
         }
 
         clientHandlers.add(this);
 
         System.out.println(clientHandshake.username() + " has joined the server.");
     }
+
 
     /**
      * Continuously listens for messages from the clients.
@@ -201,7 +232,7 @@ public class ClientHandler implements Runnable {
      * @throws InvalidKeyException
      * @throws ClassNotFoundException
      */
-    private void listenToClientsMessages() throws NoSuchPaddingException, IllegalBlockSizeException, IOException, NoSuchAlgorithmException, BadPaddingException, InvalidKeyException, ClassNotFoundException {
+    private void listenToClientsMessages() throws Exception {
         while (clientSocket.isConnected()) {
 
             byte[] encryptedMessage = (byte[]) clientInputStream.readObject();
@@ -211,8 +242,10 @@ public class ClientHandler implements Runnable {
             if (serverEncryption instanceof AsymmetricEncryption asymmetricEncryption) {
                 decryptedMessage = Message.fromBytes(asymmetricEncryption.decryptMessage(encryptedMessage));
                 System.out.println(clientHandshake.username() + " - Decrypted message: " + new String(decryptedMessage.toBytes()));
-            } else if (clientHandshake.encryptionAlgorithmType().equals("Symmetric")) {
-                // TODO: Implement symmetric encryption.
+            } else if (serverEncryption instanceof SymmetricEncryption symmetricEncryption) {
+                decryptedMessage = Message.fromBytes(symmetricEncryption.do_SymDecryption(encryptedMessage, clientHandshake.diffieHellmanPublicKey().toByteArray()));
+                clientOutputStream.writeObject(encryptedMessage);
+                System.out.println(clientHandshake.username() + " - Decrypted message: " + new String(decryptedMessage.toBytes()));
             }
             broadcastEncryptedMessage(decryptedMessage);
         }

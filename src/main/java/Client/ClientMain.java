@@ -15,8 +15,9 @@ public class ClientMain {
             } catch (Exception e) {
                 e.printStackTrace();
             }
-        } catch (IOException e) {
+        } catch (Exception e) {
             System.out.println("Error occurred while connecting to the server.");
+            e.printStackTrace();
         }
     }
 

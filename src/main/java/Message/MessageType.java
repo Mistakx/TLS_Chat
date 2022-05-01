@@ -14,10 +14,16 @@ public enum MessageType {
             return "Message";
         }
     },
-    PublicKey {
+    AsymmetricPublicKey {
         @Override
         public String toString() {
-            return "PublicKey";
+            return "AsymmetricPublicKey";
+        }
+    },
+    DiffieHellmanPublicKey {
+        @Override
+        public String toString() {
+            return "DiffieHellmanPublicKey";
         }
     }
 }
