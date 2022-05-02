@@ -25,7 +25,7 @@ public record Message(
         return recordBytes;
     }
 
-    public static Message fromBytes(byte[] bytes) throws IOException, ClassNotFoundException {
+    public static Message fromBytes(byte[] bytes) {
         try {
             ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(bytes);
             ObjectInputStream objectInputStream = new ObjectInputStream(byteArrayInputStream);

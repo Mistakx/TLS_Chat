@@ -58,16 +58,10 @@ public class SymmetricEncryption extends Encryption {
         byte[][] messageChunks = divideArray(message, blockSize);
         ByteArrayOutputStream encryptedMessage = new ByteArrayOutputStream();
         for (byte[] currentChunk : messageChunks) {
-            try {
-                encryptedMessage.write(cipher.doFinal(currentChunk));
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+            encryptedMessage.write(cipher.update(currentChunk));
         }
         return encryptedMessage.toByteArray();
     }
-
-    // This function performs the reverse operation of the do_SymEncryption function. It converts ciphertext to the plaintext using the key.
 
     /**
      * This function performs the reverse operation of the do_SymEncryption function. It converts the Encrypted text into the decrypted message using the key.
@@ -84,15 +78,17 @@ public class SymmetricEncryption extends Encryption {
 
         int blockSize = cipher.getBlockSize(); // Block size is in bytes, so *8 to get bits
         byte[][] messageChunks = divideArray(message, blockSize);
-        ByteArrayOutputStream decryptedMessage = new ByteArrayOutputStream();
-        try {
-            for (byte[] currentChunk : messageChunks) {
-                decryptedMessage.write(cipher.update(currentChunk));
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
+        ByteArrayOutputStream decryptedMessageOutputStream = new ByteArrayOutputStream();
+
+        for (int i = 0; i < messageChunks.length; i++) {
+            decryptedMessageOutputStream.write(cipher.update(messageChunks[i]));
         }
-        return decryptedMessage.toByteArray();
+
+        byte[] appendedChunk = new byte[16]; // Used because the last update isn't working
+
+        decryptedMessageOutputStream.write(cipher.update(appendedChunk));
+        byte[] decryptedMessageBytes = decryptedMessageOutputStream.toByteArray();
+        return decryptedMessageBytes;
     }
 }
 

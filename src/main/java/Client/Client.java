@@ -52,7 +52,7 @@ public class Client {
      * The settings menu to change the client's settings.
      */
     private void optionsMenu() {
-        EncryptionAlgorithm chosenEncryptionAlgorithm = new RSA();
+        EncryptionAlgorithm chosenEncryptionAlgorithm = new AES();
         String chosenEncryptionAlgorithmType = chosenEncryptionAlgorithm.getType();
         String chosenEncryptionAlgorithmName = chosenEncryptionAlgorithm.getName();
         int chosenEncryptionKeySize = chosenEncryptionAlgorithm.getKeySizes().get(0);
@@ -102,7 +102,7 @@ public class Client {
             PublicKey clientPublicKey = (PublicKey) inputStream.readObject();
             clientDiffieHellmanPrivateSharedKey = diffieHellman.computePrivateKey(clientPublicKey, clientHandshake.encryptionKeySize());
             System.out.println("Server and client agreed on private key: ");
-            System.out.println(new String(clientDiffieHellmanPrivateSharedKey));
+            System.out.println(new BigInteger(clientDiffieHellmanPrivateSharedKey));
         }
 
     }
@@ -137,7 +137,7 @@ public class Client {
 
         // Waits for the client to get the server's public key
         try {
-            Thread.sleep(1000);
+            Thread.sleep(300);
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
@@ -149,13 +149,11 @@ public class Client {
             Message message = new Message(MessageType.Message, clientHandshake.username(), messageText, null, null);
             byte[] messageBytes = message.toBytes();
             byte[] encryptedMessage = new byte[0];
+
             if (clientEncryption instanceof AsymmetricEncryption asymmetricEncryption) {
                 encryptedMessage = asymmetricEncryption.encryptMessage(messageBytes, serverAsymmetricPublicKey);
             } else if (clientEncryption instanceof SymmetricEncryption symmetricEncryption) {
                 encryptedMessage = symmetricEncryption.do_SymEncryption(messageBytes, clientDiffieHellmanPrivateSharedKey);
-//                byte[] decryptedMessage = symmetricEncryption.do_SymDecryption(encryptedMessage, clientDiffieHellmanPrivateSharedKey);
-//                System.out.println("\nDecrypted message: ");
-//                System.out.println(new String(decryptedMessage));
             }
             System.out.println("\nDecrypted message bytes: ");
             System.out.println(new String(messageBytes));

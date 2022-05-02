@@ -99,7 +99,7 @@ public class ClientHandler implements Runnable {
                     currentClient.clientOutputStream.writeObject(encryptedMessage);
                     currentClient.clientOutputStream.flush();
                 } else if ((currentClient.serverEncryption instanceof SymmetricEncryption symmetricEncryption)) {
-                    byte[] encryptedMessage = symmetricEncryption.do_SymEncryption(message.toBytes(), serverDiffieHellmanPrivateSharedKey);
+                    byte[] encryptedMessage = symmetricEncryption.do_SymEncryption(message.toBytes(), currentClient.serverDiffieHellmanPrivateSharedKey);
                     currentClient.clientOutputStream.writeObject(encryptedMessage);
                     currentClient.clientOutputStream.flush();
                 }
@@ -199,6 +199,16 @@ public class ClientHandler implements Runnable {
         System.out.println("Client encryption algorithm: " + clientHandshake.encryptionAlgorithmName());
         System.out.println("Client encryption key size: " + clientHandshake.encryptionKeySize());
 
+        if (serverEncryption instanceof AsymmetricEncryption asymmetricEncryption) {
+            System.out.println("Received public key from the client. Sending server's public key to the client.");
+            Message message = new Message(MessageType.AsymmetricPublicKey, "Server", null, null, asymmetricEncryption.getPublicKey());
+            sendEncryptedMessageToThisClient(message);
+        } else if (serverEncryption instanceof SymmetricEncryption symmetricEncryption) {
+            System.out.println("Received Diffie-Hellman public key from the client. Sending server's diffie hellman public key to the client.");
+            agreeOnSharedPrivateKey(clientOutputStream);
+            System.out.println("Server and client agreed on private key : ");
+            System.out.println(new BigInteger(serverDiffieHellmanPrivateSharedKey));
+        }
 
         if (clientAlreadyExists(clientHandshake.username())) {
             System.out.println("Server already has a client with that username.");
@@ -207,16 +217,7 @@ public class ClientHandler implements Runnable {
             return;
         }
 
-        if (serverEncryption instanceof AsymmetricEncryption asymmetricEncryption) {
-            System.out.println("Received public key from the client. Sending server's public key to the client.");
-            Message message = new Message(MessageType.AsymmetricPublicKey, "Server", null, null, asymmetricEncryption.getPublicKey());
-            sendEncryptedMessageToThisClient(message);
-        } else if (serverEncryption instanceof SymmetricEncryption symmetricEncryption) {
-            System.out.println("Received Diffie-Hellman public key from the client. Sending server's diffie hellman public key to the client.");
-            agreeOnSharedPrivateKey(clientOutputStream);
-            System.out.println("Agreed on private key : ");
-            System.out.println(new String(serverDiffieHellmanPrivateSharedKey));
-        }
+
 
         clientHandlers.add(this);
 
@@ -246,7 +247,8 @@ public class ClientHandler implements Runnable {
             if (serverEncryption instanceof AsymmetricEncryption asymmetricEncryption) {
                 decryptedMessage = Message.fromBytes(asymmetricEncryption.decryptMessage(encryptedMessage));
             } else if (serverEncryption instanceof SymmetricEncryption symmetricEncryption) {
-                decryptedMessage = Message.fromBytes(symmetricEncryption.do_SymDecryption(encryptedMessage, serverDiffieHellmanPrivateSharedKey));
+                byte[] decryptedMessageBytes = symmetricEncryption.do_SymDecryption(encryptedMessage, serverDiffieHellmanPrivateSharedKey);
+                decryptedMessage = Message.fromBytes(decryptedMessageBytes);
             }
             System.out.println(clientHandshake.username() + " - Decrypted message bytes: ");
             System.out.println(new String(decryptedMessage.toBytes()));
