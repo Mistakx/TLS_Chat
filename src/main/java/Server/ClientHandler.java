@@ -239,19 +239,20 @@ public class ClientHandler implements Runnable {
         while (clientSocket.isConnected()) {
 
             byte[] encryptedMessage = (byte[]) clientInputStream.readObject();
-            System.out.println("\n" + clientHandshake.username() + " - Encrypted message received: ");
+            System.out.println("\n" + clientHandshake.username() + " - Encrypted message bytes received: ");
             System.out.println(new String(encryptedMessage));
             Message decryptedMessage = null;
 
             if (serverEncryption instanceof AsymmetricEncryption asymmetricEncryption) {
                 decryptedMessage = Message.fromBytes(asymmetricEncryption.decryptMessage(encryptedMessage));
-                System.out.println(clientHandshake.username() + " - Decrypted message: ");
-                System.out.println(new String(decryptedMessage.toBytes()));
             } else if (serverEncryption instanceof SymmetricEncryption symmetricEncryption) {
                 decryptedMessage = Message.fromBytes(symmetricEncryption.do_SymDecryption(encryptedMessage, serverDiffieHellmanPrivateSharedKey));
-                clientOutputStream.writeObject(encryptedMessage);
-                System.out.println(clientHandshake.username() + " - Decrypted message: " + new String(decryptedMessage.toBytes()));
             }
+            System.out.println(clientHandshake.username() + " - Decrypted message bytes: ");
+            System.out.println(new String(decryptedMessage.toBytes()));
+            System.out.println(clientHandshake.username() + ": " + decryptedMessage.message());
+
+            // TODO: Message specific client
             broadcastEncryptedMessage(decryptedMessage);
         }
     }

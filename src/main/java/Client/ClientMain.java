@@ -8,7 +8,7 @@ public class ClientMain {
 
 
         try {
-            Client client = new Client("127.0.0.1", 8000);
+            Client client = new Client("127.0.0.1", 8001);
             client.readMessages();
             try {
                 client.sendMessages();

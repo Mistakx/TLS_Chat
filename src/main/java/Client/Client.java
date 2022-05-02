@@ -2,6 +2,7 @@ package Client;
 
 import Encryption.Algorithms.AES;
 import Encryption.Algorithms.EncryptionAlgorithm;
+import Encryption.Algorithms.RSA;
 import Encryption.Encryption;
 import Message.Handshake;
 
@@ -51,7 +52,7 @@ public class Client {
      * The settings menu to change the client's settings.
      */
     private void optionsMenu() {
-        EncryptionAlgorithm chosenEncryptionAlgorithm = new AES();
+        EncryptionAlgorithm chosenEncryptionAlgorithm = new RSA();
         String chosenEncryptionAlgorithmType = chosenEncryptionAlgorithm.getType();
         String chosenEncryptionAlgorithmName = chosenEncryptionAlgorithm.getName();
         int chosenEncryptionKeySize = chosenEncryptionAlgorithm.getKeySizes().get(0);
@@ -152,13 +153,13 @@ public class Client {
                 encryptedMessage = asymmetricEncryption.encryptMessage(messageBytes, serverAsymmetricPublicKey);
             } else if (clientEncryption instanceof SymmetricEncryption symmetricEncryption) {
                 encryptedMessage = symmetricEncryption.do_SymEncryption(messageBytes, clientDiffieHellmanPrivateSharedKey);
-                byte[] decryptedMessage = symmetricEncryption.do_SymDecryption(encryptedMessage, clientDiffieHellmanPrivateSharedKey);
-                System.out.println("\nDecrypted message: ");
-                System.out.println(new String(decryptedMessage));
+//                byte[] decryptedMessage = symmetricEncryption.do_SymDecryption(encryptedMessage, clientDiffieHellmanPrivateSharedKey);
+//                System.out.println("\nDecrypted message: ");
+//                System.out.println(new String(decryptedMessage));
             }
-            System.out.println("\nDecrypted message: ");
+            System.out.println("\nDecrypted message bytes: ");
             System.out.println(new String(messageBytes));
-            System.out.println("Encrypted message sent: ");
+            System.out.println("Encrypted message bytes sent: ");
             System.out.println(new String(encryptedMessage));
             outputStream.writeObject(encryptedMessage);
         }
@@ -179,19 +180,19 @@ public class Client {
                 try {
 
                     byte[] encryptedMessage = (byte[]) inputStream.readObject();
-                    System.out.println("\nReceived encrypted message: ");
+                    System.out.println("\nReceived encrypted message bytes: ");
                     System.out.println(new String(encryptedMessage));
                     Message decryptedMessage = null;
 
                     if (clientEncryption instanceof AsymmetricEncryption asymmetricEncryption) {
-                        decryptedMessage = Message.fromBytes(asymmetricEncryption.decryptMessage(encryptedMessage));
-                        System.out.println("Decrypted message: ");
-                        System.out.println(new String(decryptedMessage.toBytes()));
+                        byte[] decryptedBytes = asymmetricEncryption.decryptMessage(encryptedMessage);
+                        decryptedMessage = Message.fromBytes(decryptedBytes);
                     } else if (clientEncryption instanceof SymmetricEncryption symmetricEncryption) {
-                        decryptedMessage = Message.fromBytes(symmetricEncryption.do_SymDecryption(encryptedMessage, this.clientDiffieHellmanPrivateSharedKey));
-                        System.out.println("Decrypted message: ");
-                        System.out.println(new String(decryptedMessage.toBytes()));
+                        byte[] decryptedBytes = symmetricEncryption.do_SymDecryption(encryptedMessage, clientDiffieHellmanPrivateSharedKey);
+                        decryptedMessage = Message.fromBytes(decryptedBytes);
                     }
+                    System.out.println("Decrypted message bytes: ");
+                    System.out.println(new String(decryptedMessage.toBytes()));
 
 
                     if (decryptedMessage.messageType().equals(MessageType.AsymmetricPublicKey)) {

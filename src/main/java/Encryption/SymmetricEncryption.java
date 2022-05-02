@@ -13,7 +13,6 @@ public class SymmetricEncryption extends Encryption {
 
     private String encryptionAlgorithmName;
     private int encryptionKeySize;
-    private SecretKey secretKey;
 
 
     private static byte[][] divideArray(byte[] source, int chunkSize) {
@@ -51,8 +50,7 @@ public class SymmetricEncryption extends Encryption {
      * @throws Exception
      */
     public byte[] do_SymEncryption(byte[] message, byte[] key) throws Exception {
-        byte[] bytes = ByteBuffer.allocate(16).put(key).array();
-        SecretKeySpec secretKey = new SecretKeySpec(bytes, encryptionAlgorithmName);
+        SecretKeySpec secretKey = new SecretKeySpec(key, encryptionAlgorithmName);
         Cipher cipher = Cipher.getInstance(encryptionAlgorithmName);
         cipher.init(Cipher.ENCRYPT_MODE, secretKey);
 
@@ -80,8 +78,7 @@ public class SymmetricEncryption extends Encryption {
      * @throws Exception
      */
     public byte[] do_SymDecryption(byte[] message, byte[] key) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException, IOException {
-        byte[] bytes = ByteBuffer.allocate(16).put(key).array();
-        SecretKeySpec secretKey = new SecretKeySpec(bytes, encryptionAlgorithmName);
+        SecretKeySpec secretKey = new SecretKeySpec(key, encryptionAlgorithmName);
         Cipher cipher = Cipher.getInstance(encryptionAlgorithmName);
         cipher.init(Cipher.DECRYPT_MODE, secretKey);
 
@@ -90,7 +87,7 @@ public class SymmetricEncryption extends Encryption {
         ByteArrayOutputStream decryptedMessage = new ByteArrayOutputStream();
         try {
             for (byte[] currentChunk : messageChunks) {
-                decryptedMessage.write(cipher.doFinal(currentChunk));
+                decryptedMessage.write(cipher.update(currentChunk));
             }
         } catch (Exception e) {
             e.printStackTrace();
