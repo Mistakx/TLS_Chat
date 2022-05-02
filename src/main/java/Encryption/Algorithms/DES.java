@@ -16,7 +16,7 @@ public class DES extends EncryptionAlgorithm {
 
     @Override
     public List<Integer> getKeySizes() {
-        List<Integer> keySizes = List.of(56);
+        List<Integer> keySizes = List.of(64);
         return keySizes;
     }
 

@@ -1,24 +1,24 @@
 package Client;
 
-import Encryption.Algorithms.AES;
-import Encryption.Algorithms.EncryptionAlgorithm;
-import Encryption.Algorithms.RSA;
+import Encryption.Algorithms.*;
+import Encryption.AsymmetricEncryption;
+import Encryption.DiffieHellman;
 import Encryption.Encryption;
+import Encryption.SymmetricEncryption;
 import Message.Handshake;
+import Message.Message;
+import Message.MessageType;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.math.BigInteger;
 import java.net.Socket;
-import java.security.*;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
+import java.security.PublicKey;
 import java.util.Scanner;
-
-import Encryption.SymmetricEncryption;
-import Encryption.AsymmetricEncryption;
-import Encryption.DiffieHellman;
-import Message.Message;
-import Message.MessageType;
 
 import static java.lang.System.exit;
 
@@ -47,16 +47,47 @@ public class Client {
     private Handshake clientHandshake = new Handshake(null, null, null, null, null);
     private PublicKey serverAsymmetricPublicKey;
     private byte[] clientDiffieHellmanPrivateSharedKey;
+    /**
+     * The chosen encryption algorithm.
+     */
+    private EncryptionAlgorithm chosenEncryptionAlgorithm;
+    /**
+     * The chosen encryption algorithm's key size.
+     */
+    private int keySize;
 
     /**
      * The settings menu to change the client's settings.
      */
     private void optionsMenu() {
-        EncryptionAlgorithm chosenEncryptionAlgorithm = new AES();
-        String chosenEncryptionAlgorithmType = chosenEncryptionAlgorithm.getType();
-        String chosenEncryptionAlgorithmName = chosenEncryptionAlgorithm.getName();
-        int chosenEncryptionKeySize = chosenEncryptionAlgorithm.getKeySizes().get(0);
-        clientHandshake = new Handshake(clientHandshake.username(), chosenEncryptionAlgorithmType, chosenEncryptionAlgorithmName, chosenEncryptionKeySize, clientHandshake.publicKey());
+        Scanner usrInput = new Scanner( System.in );
+        System.out.println( "--------------------------------------------------------\n Please select the encryption algorithm you want to use: \n * 1- AES \n * 2- DES \n * 3- 3DES \n * 4- RSA" );
+        int op1 = usrInput.nextInt( );
+        switch ( op1 ){
+            case 1 -> {
+                chosenEncryptionAlgorithm = new AES( );
+                System.out.println( "----------------------------\n Please select the key size: \n * 1- 128bits \n * 2- 192bits \n * 3- 256bits" );
+                System.out.print( "Your option: " );
+                int op2 = usrInput.nextInt( );
+                keySize = chosenEncryptionAlgorithm.getKeySizes( ).get( op2 - 1 );
+            }
+            case 2 -> {
+                chosenEncryptionAlgorithm = new DES( );
+                keySize = chosenEncryptionAlgorithm.getKeySizes( ).get(0);}
+            case 3 -> {
+                chosenEncryptionAlgorithm = new DES3( );
+                keySize = chosenEncryptionAlgorithm.getKeySizes( ).get(0);
+            }
+            case 4 -> {
+                chosenEncryptionAlgorithm = new RSA( );
+                System.out.println( "---------------------------------------\n Please select the key size: \n * 1- 512bits \n * 2- 1024bits \n * 3- 2048bits" );
+                System.out.print( "Your option: " );
+                int op3 = usrInput.nextInt( );
+                keySize = chosenEncryptionAlgorithm.getKeySizes( ).get( op3 - 1 );
+            }
+            default -> {System.out.print( "Invalid option, restarting setup....\n" ); optionsMenu( );}
+        }
+        clientHandshake = new Handshake(clientHandshake.username(), chosenEncryptionAlgorithm.getType(), chosenEncryptionAlgorithm.getName(), keySize, clientHandshake.publicKey());
 
         if (clientHandshake.encryptionAlgorithmType().equals("Symmetric")) {
             clientEncryption = new SymmetricEncryption(clientHandshake.encryptionAlgorithmName(), clientHandshake.encryptionKeySize());

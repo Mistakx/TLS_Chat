@@ -11,12 +11,12 @@ public class DES3 extends EncryptionAlgorithm {
 
     @Override
     public String getName() {
-        return "DES";
+        return "TripleDES";
     }
 
     @Override
     public List<Integer> getKeySizes() {
-        List<Integer> keySizes = List.of(112, 168);
+        List<Integer> keySizes = List.of(192);
         return keySizes;
     }
 
