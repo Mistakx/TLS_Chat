@@ -115,7 +115,7 @@ public class ClientHandler implements Runnable {
     public void sendEncryptedMessageToClient(Message message, String clientUsername) throws Exception {
         for (ClientHandler currentClient : clientHandlers) {
             if (currentClient.clientHandshake.username().equals(clientUsername)) {
-                if (serverEncryption instanceof AsymmetricEncryption asymmetricEncryption) {
+                if (currentClient.serverEncryption instanceof AsymmetricEncryption asymmetricEncryption) {
                     byte[] encryptedMessage = asymmetricEncryption.encryptMessage(message.toBytes(), currentClient.clientHandshake.publicKey());
                     currentClient.clientOutputStream.writeObject(encryptedMessage);
                     currentClient.clientOutputStream.flush();
@@ -265,12 +265,12 @@ public class ClientHandler implements Runnable {
             i++;
             System.out.println( "Teste message: " + message );
         }
-        Message privMessage = new Message( MessageType.Message, clientHandshake.username( ), message, null, null );
+        Message privMessage = new Message( MessageType.Message, clientHandshake.username( ), message, null, clientHandshake.publicKey() );
         for (String user : users) {
             sendEncryptedMessageToClient( privMessage,user );
             System.out.println( "PRIVATE MESSAGE FOR: " + user );
-            System.out.println( "Decrypted message: " + privMessage.message( ) );
         }
+        System.out.println( "Decrypted message: " + privMessage.message( ) );
     }
 
     @Override
