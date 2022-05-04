@@ -22,7 +22,7 @@ import java.util.Scanner;
 
 import static java.lang.System.exit;
 
-public class Client {
+public class Client{
 
     /**
      * The client socket to connect to the server.

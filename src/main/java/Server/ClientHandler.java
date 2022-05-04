@@ -1,10 +1,16 @@
 package Server;
 
+import Encryption.AsymmetricEncryption;
+import Encryption.DiffieHellman;
 import Encryption.Encryption;
+import Encryption.SymmetricEncryption;
 import Message.Handshake;
 import Message.Message;
 import Message.MessageType;
 
+import javax.crypto.BadPaddingException;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -17,14 +23,6 @@ import java.security.PublicKey;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-
-import Encryption.AsymmetricEncryption;
-import Encryption.SymmetricEncryption;
-import Encryption.DiffieHellman;
-
-import javax.crypto.BadPaddingException;
-import javax.crypto.IllegalBlockSizeException;
-import javax.crypto.NoSuchPaddingException;
 
 public class ClientHandler implements Runnable {
 
@@ -93,7 +91,6 @@ public class ClientHandler implements Runnable {
     public void broadcastEncryptedMessage(Message message) throws Exception {
         for (ClientHandler currentClient : clientHandlers) {
             if (!this.equals(currentClient)) {
-
                 if (currentClient.serverEncryption instanceof AsymmetricEncryption asymmetricEncryption) {
                     byte[] encryptedMessage = asymmetricEncryption.encryptMessage(message.toBytes(), currentClient.clientHandshake.publicKey());
                     currentClient.clientOutputStream.writeObject(encryptedMessage);
@@ -119,15 +116,14 @@ public class ClientHandler implements Runnable {
         for (ClientHandler currentClient : clientHandlers) {
             if (currentClient.clientHandshake.username().equals(clientUsername)) {
                 if (serverEncryption instanceof AsymmetricEncryption asymmetricEncryption) {
-                    byte[] encryptedMessage = asymmetricEncryption.encryptMessage(message.toBytes(), clientHandshake.publicKey());
+                    byte[] encryptedMessage = asymmetricEncryption.encryptMessage(message.toBytes(), currentClient.clientHandshake.publicKey());
                     currentClient.clientOutputStream.writeObject(encryptedMessage);
                     currentClient.clientOutputStream.flush();
                 } else if ((currentClient.serverEncryption instanceof SymmetricEncryption symmetricEncryption)) {
-                    byte[] encryptedMessage = symmetricEncryption.do_SymEncryption(message.toBytes(), serverDiffieHellmanPrivateSharedKey);
+                    byte[] encryptedMessage = symmetricEncryption.do_SymEncryption(message.toBytes(), currentClient.serverDiffieHellmanPrivateSharedKey);
                     currentClient.clientOutputStream.writeObject(encryptedMessage);
                     currentClient.clientOutputStream.flush();
                 }
-
             }
         }
     }
@@ -148,7 +144,6 @@ public class ClientHandler implements Runnable {
             clientOutputStream.writeObject(encryptedMessage);
             clientOutputStream.flush();
         }
-
     }
 
 
@@ -162,7 +157,6 @@ public class ClientHandler implements Runnable {
         } else if (clientHandshake.encryptionAlgorithmType().equals("Asymmetric")) {
             serverEncryption = new AsymmetricEncryption(clientHandshake.encryptionAlgorithmName(), clientHandshake.encryptionKeySize());
         }
-
     }
 
     /**
@@ -216,11 +210,7 @@ public class ClientHandler implements Runnable {
             sendEncryptedMessageToThisClient(errorMessage);
             return;
         }
-
-
-
         clientHandlers.add(this);
-
         System.out.println(clientHandshake.username() + " has joined the server.");
     }
 
@@ -254,8 +244,32 @@ public class ClientHandler implements Runnable {
             System.out.println(new String(decryptedMessage.toBytes()));
             System.out.println(clientHandshake.username() + ": " + decryptedMessage.message());
 
-            // TODO: Message specific client
-            broadcastEncryptedMessage(decryptedMessage);
+            if( decryptedMessage.message( ).charAt( 0 ) == '@'){
+                privateMessageToWho(decryptedMessage.message());
+            }else{ broadcastEncryptedMessage( decryptedMessage ); }
+        }
+    }
+
+    /**
+     * Reads the message to direct it only to the specified users.
+     * @param message Message that was sent as a string
+     * @throws Exception
+     */
+    private void privateMessageToWho(String message) throws Exception {
+        List<String> users = new ArrayList<String>();
+        int i=0;
+        while(message.charAt(0)=='@'){
+            String[] privatemsg = message.split(" ", 2 );
+            users.add(privatemsg[0].substring( 1 ));
+            message = privatemsg[1];
+            i++;
+            System.out.println( "Teste message: " + message );
+        }
+        Message privMessage = new Message( MessageType.Message, clientHandshake.username( ), message, null, null );
+        for (String user : users) {
+            sendEncryptedMessageToClient( privMessage,user );
+            System.out.println( "PRIVATE MESSAGE FOR: " + user );
+            System.out.println( "Decrypted message: " + privMessage.message( ) );
         }
     }
 
