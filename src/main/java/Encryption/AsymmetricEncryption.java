@@ -10,13 +10,18 @@ import java.security.*;
 import java.util.Arrays;
 
 public class AsymmetricEncryption extends Encryption {
-
     private PrivateKey privateKey;
     private PublicKey publicKey;
-
     private String encryptionAlgorithmName;
     private int encryptionKeySize;
 
+    /**
+     * Divides an array of bytes into blocks of the same size
+     *
+     * @param source
+     * @param chunkSize
+     * @return
+     */
     private static byte[][] divideArray(byte[] source, int chunkSize) {
 
 
@@ -32,6 +37,12 @@ public class AsymmetricEncryption extends Encryption {
         return ret;
     }
 
+    /**
+     * Constructor
+     *
+     * @param encryptionAlgorithmName Encryption Algorithm
+     * @param encryptionKeySize Key size
+     */
     public AsymmetricEncryption(String encryptionAlgorithmName, int encryptionKeySize) {
         try {
             this.encryptionAlgorithmName = encryptionAlgorithmName;
@@ -52,6 +63,11 @@ public class AsymmetricEncryption extends Encryption {
         return encryptionKeySize;
     }
 
+    /**
+     * Generates the private and public key
+     *
+     * @throws NoSuchAlgorithmException
+     */
     private void generateKeyPair() throws NoSuchAlgorithmException {
         KeyPairGenerator keyPairGenerator = KeyPairGenerator.getInstance(encryptionAlgorithmName);
         keyPairGenerator.initialize(encryptionKeySize);
@@ -60,6 +76,19 @@ public class AsymmetricEncryption extends Encryption {
         this.publicKey = keyPair.getPublic();
     }
 
+    /**
+     * Encrypts the message with the chosen algorithm and key size
+     *
+     * @param message message to be encrypted
+     * @param publicKey key to be used in the encryption
+     * @return
+     * @throws NoSuchPaddingException
+     * @throws NoSuchAlgorithmException
+     * @throws InvalidKeyException
+     * @throws IllegalBlockSizeException
+     * @throws BadPaddingException
+     * @throws IOException
+     */
     public byte[] encryptMessage(byte[] message, PublicKey publicKey) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException, IOException {
         Cipher cipher = Cipher.getInstance(encryptionAlgorithmName);
         cipher.init(Cipher.ENCRYPT_MODE, publicKey);
@@ -72,6 +101,18 @@ public class AsymmetricEncryption extends Encryption {
         return encryptedMessage.toByteArray();
     }
 
+    /**
+     * Decrypts the message with the chosen algorithm and key size
+     *
+     * @param message message to be decrypted
+     * @return
+     * @throws NoSuchPaddingException
+     * @throws NoSuchAlgorithmException
+     * @throws InvalidKeyException
+     * @throws IllegalBlockSizeException
+     * @throws BadPaddingException
+     * @throws IOException
+     */
     public byte[] decryptMessage(byte[] message) throws NoSuchPaddingException, NoSuchAlgorithmException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException, IOException {
         Cipher cipher = Cipher.getInstance(encryptionAlgorithmName);
         cipher.init(Cipher.DECRYPT_MODE, this.privateKey);

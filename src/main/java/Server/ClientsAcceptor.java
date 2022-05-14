@@ -11,6 +11,12 @@ public class ClientsAcceptor implements Runnable {
 
     private final ServerSocket server;
 
+    /**
+     * Constructor
+     *
+     * @param port port of the connection
+     * @throws IOException
+     */
     public ClientsAcceptor(int port) throws IOException {
         server = new ServerSocket(port);
     }
@@ -37,6 +43,11 @@ public class ClientsAcceptor implements Runnable {
 
     }
 
+    /**
+     * Closes the connection
+     *
+     * @throws IOException
+     */
     private void closeConnection() throws IOException {
         server.close();
     }

@@ -8,10 +8,16 @@ public class Hash extends Hashing {
     private String hashAlgorithmName;
     private int blockSize;
 
+    /**
+     * Constructor
+     * @param hashAlg Hash algorithm
+     * @param bSize block size
+     */
     public Hash(String hashAlg, int bSize) {
         this.hashAlgorithmName = hashAlg;
         this.blockSize = bSize;
     }
+
 
     @Override
     public String getAlgorithmName() {
@@ -24,6 +30,12 @@ public class Hash extends Hashing {
     }
 
 
+    /**
+     * Applies the Hash function to the message, depending on the chosen hash algorithm
+     *
+     * @param message String of the message to be Hashed
+     * @return The hash of the message
+     */
     public String applyHash(String message)
     {
         try {

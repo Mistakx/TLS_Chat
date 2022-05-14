@@ -173,6 +173,9 @@ public class Client{
 
     }
 
+    /**
+     * Sets the username for the client
+     */
     private void changeUsername() {
         Scanner inputScanner = new Scanner(System.in);
         System.out.print("Enter new username: ");
@@ -180,6 +183,16 @@ public class Client{
         clientHandshake = new Handshake(newUsername, clientHandshake.encryptionAlgorithmType(), clientHandshake.encryptionAlgorithmName(), clientHandshake.encryptionKeySize(), clientHandshake.publicKey(), clientHandshake.encryptionAlgorithmName(), clientHandshake.blockSize() );
     }
 
+    /**
+     * Constructor
+     *
+     * @param host Host Ip
+     * @param port port of the connection
+     * @throws IOException
+     * @throws NoSuchAlgorithmException
+     * @throws ClassNotFoundException
+     * @throws InvalidKeyException
+     */
     public Client(String host, int port) throws IOException, NoSuchAlgorithmException, ClassNotFoundException, InvalidKeyException {
 
         clientSocket = new Socket(host, port);

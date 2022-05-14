@@ -3,7 +3,6 @@ package Message;
 import java.io.*;
 import java.security.PublicKey;
 
-// TODO: Implement message hash
 public record Message(
         MessageType messageType,
         String username,
@@ -12,6 +11,12 @@ public record Message(
         PublicKey publicKey
 ) implements Serializable {
 
+    /**
+     * Casts into bytes
+     *
+     * @return
+     * @throws IOException
+     */
     public byte[] toBytes() throws IOException {
 
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
@@ -25,6 +30,12 @@ public record Message(
         return recordBytes;
     }
 
+    /**
+     * Casts the bytes into a message
+     *
+     * @param bytes to be turned into a message
+     * @return
+     */
     public static Message fromBytes(byte[] bytes) {
         try {
             ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(bytes);

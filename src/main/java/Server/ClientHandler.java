@@ -271,6 +271,7 @@ public class ClientHandler implements Runnable {
 
     /**
      * Reads the message to direct it only to the specified users.
+     *
      * @param message Message that was sent as a string
      * @throws Exception
      */

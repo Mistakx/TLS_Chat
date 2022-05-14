@@ -1,13 +1,8 @@
 package Encryption;
 
 import javax.crypto.KeyAgreement;
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.math.BigInteger;
 import java.security.*;
 import java.util.Arrays;
-import java.util.Random;
 
 public class DiffieHellman {
 
@@ -21,7 +16,12 @@ public class DiffieHellman {
 
     }
 
-
+    /**
+     * Generates the private key
+     *
+     * @return
+     * @throws NoSuchAlgorithmException
+     */
     public PrivateKey generatePrivateKey() throws NoSuchAlgorithmException {
 //        Random randomGenerator = SecureRandom.getInstance( "SHA1PRNG" );
 //        return new BigInteger( NUM_BITS , randomGenerator );
@@ -33,12 +33,26 @@ public class DiffieHellman {
 
     }
 
+    /**
+     * Generates the public key
+     *
+     * @return
+     */
     public PublicKey generatePublicKey() {
 //        return G.modPow( privateKey , N );
         PublicKey publickey = keyPair.getPublic();
         return publickey;
     }
 
+    /**
+     * Computes the private key
+     *
+     * @param publicKey publicKey
+     * @param NUM_BITS Number of bits of the key
+     * @return
+     * @throws NoSuchAlgorithmException
+     * @throws InvalidKeyException
+     */
     public byte[] computePrivateKey(PublicKey publicKey, int NUM_BITS) throws NoSuchAlgorithmException, InvalidKeyException {
 //        return publicKey.modPow(privateKey, N);
 
