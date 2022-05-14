@@ -4,6 +4,7 @@ import Encryption.AsymmetricEncryption;
 import Encryption.DiffieHellman;
 import Encryption.Encryption;
 import Encryption.SymmetricEncryption;
+import Hashing.Hash;
 import Message.Handshake;
 import Message.Message;
 import Message.MessageType;
@@ -89,14 +90,18 @@ public class ClientHandler implements Runnable {
      * @throws IOException
      */
     public void broadcastEncryptedMessage(Message message) throws Exception {
+
         for (ClientHandler currentClient : clientHandlers) {
+            Hash msgHash = new Hash(currentClient.clientHandshake.hashAlgorithmName(), currentClient.clientHandshake.blockSize());
+            String hash = msgHash.applyHash(message.message());
+            Message hashedMessage = new Message(MessageType.Message, clientHandshake.username( ), message.message(), hash, clientHandshake.publicKey());
             if (!this.equals(currentClient)) {
                 if (currentClient.serverEncryption instanceof AsymmetricEncryption asymmetricEncryption) {
-                    byte[] encryptedMessage = asymmetricEncryption.encryptMessage(message.toBytes(), currentClient.clientHandshake.publicKey());
+                    byte[] encryptedMessage = asymmetricEncryption.encryptMessage(hashedMessage.toBytes(), currentClient.clientHandshake.publicKey());
                     currentClient.clientOutputStream.writeObject(encryptedMessage);
                     currentClient.clientOutputStream.flush();
                 } else if ((currentClient.serverEncryption instanceof SymmetricEncryption symmetricEncryption)) {
-                    byte[] encryptedMessage = symmetricEncryption.do_SymEncryption(message.toBytes(), currentClient.serverDiffieHellmanPrivateSharedKey);
+                    byte[] encryptedMessage = symmetricEncryption.do_SymEncryption(hashedMessage.toBytes(), currentClient.serverDiffieHellmanPrivateSharedKey);
                     currentClient.clientOutputStream.writeObject(encryptedMessage);
                     currentClient.clientOutputStream.flush();
                 }
@@ -114,13 +119,16 @@ public class ClientHandler implements Runnable {
      */
     public void sendEncryptedMessageToClient(Message message, String clientUsername) throws Exception {
         for (ClientHandler currentClient : clientHandlers) {
+            Hash msgHash = new Hash(currentClient.clientHandshake.hashAlgorithmName(), currentClient.clientHandshake.blockSize());
+            String hash = msgHash.applyHash(message.message());
+            Message hashedMessage = new Message(MessageType.Message, clientHandshake.username( ), message.message(), hash, clientHandshake.publicKey());
             if (currentClient.clientHandshake.username().equals(clientUsername)) {
                 if (currentClient.serverEncryption instanceof AsymmetricEncryption asymmetricEncryption) {
-                    byte[] encryptedMessage = asymmetricEncryption.encryptMessage(message.toBytes(), currentClient.clientHandshake.publicKey());
+                    byte[] encryptedMessage = asymmetricEncryption.encryptMessage(hashedMessage.toBytes(), currentClient.clientHandshake.publicKey());
                     currentClient.clientOutputStream.writeObject(encryptedMessage);
                     currentClient.clientOutputStream.flush();
                 } else if ((currentClient.serverEncryption instanceof SymmetricEncryption symmetricEncryption)) {
-                    byte[] encryptedMessage = symmetricEncryption.do_SymEncryption(message.toBytes(), currentClient.serverDiffieHellmanPrivateSharedKey);
+                    byte[] encryptedMessage = symmetricEncryption.do_SymEncryption(hashedMessage.toBytes(), currentClient.serverDiffieHellmanPrivateSharedKey);
                     currentClient.clientOutputStream.writeObject(encryptedMessage);
                     currentClient.clientOutputStream.flush();
                 }
@@ -192,6 +200,8 @@ public class ClientHandler implements Runnable {
         System.out.println("Set up encryption according to the handshake with the client.");
         System.out.println("Client encryption algorithm: " + clientHandshake.encryptionAlgorithmName());
         System.out.println("Client encryption key size: " + clientHandshake.encryptionKeySize());
+        System.out.println("Client Hash algorithm: " + clientHandshake.hashAlgorithmName());
+        System.out.println("Client Hash block size: " + clientHandshake.blockSize());
 
         if (serverEncryption instanceof AsymmetricEncryption asymmetricEncryption) {
             System.out.println("Received public key from the client. Sending server's public key to the client.");
@@ -239,6 +249,15 @@ public class ClientHandler implements Runnable {
             } else if (serverEncryption instanceof SymmetricEncryption symmetricEncryption) {
                 byte[] decryptedMessageBytes = symmetricEncryption.do_SymDecryption(encryptedMessage, serverDiffieHellmanPrivateSharedKey);
                 decryptedMessage = Message.fromBytes(decryptedMessageBytes);
+            }
+            Hash msgHash = new Hash(clientHandshake.hashAlgorithmName(), clientHandshake.blockSize());
+            String hashReceived = msgHash.applyHash(decryptedMessage.message());
+            System.out.println("Hash received: "+ hashReceived);
+            System.out.println("Message hash: " + decryptedMessage.messageHash());
+            if (decryptedMessage.messageHash().equals(hashReceived)){
+                System.out.println("VALID MESSAGE!");
+            }else{
+                System.out.println("THE MESSAGE HAS BEEN ALTERED!!");
             }
             System.out.println(clientHandshake.username() + " - Decrypted message bytes: ");
             System.out.println(new String(decryptedMessage.toBytes()));

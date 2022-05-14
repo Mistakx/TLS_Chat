@@ -8,7 +8,8 @@ public record Handshake(
         String encryptionAlgorithmType,
         String encryptionAlgorithmName,
         Integer encryptionKeySize,
-        PublicKey publicKey
-
+        PublicKey publicKey,
+        String hashAlgorithmName,
+        Integer blockSize
 ) implements Serializable {
 }
