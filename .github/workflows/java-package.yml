@@ -1,0 +1,48 @@
+name: Build package, documentation, and test coverage
+
+on:
+
+  workflow_dispatch:
+    branches:
+      - master
+      - deleteCommit
+
+  pull_request:
+
+    branches:
+      - master
+      - deleteCommit
+  push:
+    branches:
+      - master
+      - deleteCommit
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checks out the repository
+        uses: actions/checkout@v2
+      - name: Setup Java JDK
+        uses: actions/setup-java@v3.0.0
+        with:
+          distribution: 'microsoft'
+          java-version: '17'
+      - name: Build with Maven
+        working-directory: ./pa-web-server-master
+        run: mvn package -Dshow=private
+      - name: Upload the build artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: build-artifact
+          path: TLS_Chat/target/
+      - name: Upload the documentation artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: documentation-artifact
+          path: TLS_Chat/target/apidocs/
+      - name: Upload the test coverage artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: test-coverage-artifact
+          path: TLS_Chat/target/site/jacoco/
