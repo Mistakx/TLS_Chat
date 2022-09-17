@@ -2,4 +2,4 @@ Encrypted chat built as the second project of the Advanced Programming class, im
 
 Graded in 17.48/20.00
 
-![Project](./assets/TES_Chat.png)
+![Project](./assets/TLS_Chat.png)
